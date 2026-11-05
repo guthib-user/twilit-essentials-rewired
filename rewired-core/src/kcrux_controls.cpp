@@ -59,7 +59,8 @@ using AxisFn=short(*)(SDL_Gamepad*,int);
 ButtonFn s_button=nullptr;AxisFn s_axis=nullptr;
 kcrux::Slots s_slots;
 std::array<kcrux::Button,4> s_dpad;
-kcrux::Button s_items,s_mapMenu,s_mapWarp;
+kcrux::Button s_items,s_mapMenu;
+kcrux::Trigger s_mapWarp;
 kcrux::Button s_sword,s_cancel,s_view,s_object,s_midna;
 kcrux::Trigger s_fire,s_quick,s_target;
 kcrux::Trigger s_menuTrigger;
@@ -483,14 +484,14 @@ void after_pad_read(ModContext*,void*,void*,void*){
     const int axis=pad&&s_axis?s_axis(pad,5):0;
     auto& input=mDoCPd_c::getCpadInfo(PAD_1);
     const bool fullMap=dMeter2Info_getWindowStatus()==4&&!ui_visible();
-    s_mapWarp.sample(button(3),!fullMap);
+    s_mapWarp.sample(axis,!fullMap);
     if(fullMap){
-        // Native Z selects Warp on the full map. Y is contextual here, never
-        // an item assignment or jump. Native map eligibility checks still run.
-        input.mButtonFlags&=~(PAD_TRIGGER_Z|PAD_BUTTON_Y);
-        input.mPressedButtonFlags&=~(PAD_TRIGGER_Z|PAD_BUTTON_Y);
-        if(s_mapWarp.held)input.mButtonFlags|=PAD_TRIGGER_Z;
-        if(s_mapWarp.pressed)input.mPressedButtonFlags|=PAD_TRIGGER_Z;
+        // Native Z selects Warp on the full map. Physical RT supplies it here;
+        // preserve Y for Essentials' map marking. Native eligibility still runs.
+        input.mButtonFlags&=~PAD_TRIGGER_Z;
+        input.mPressedButtonFlags&=~PAD_TRIGGER_Z;
+        if(s_mapWarp.button.held)input.mButtonFlags|=PAD_TRIGGER_Z;
+        if(s_mapWarp.button.pressed)input.mPressedButtonFlags|=PAD_TRIGGER_Z;
     }
     const bool collection=dMeter2Info_getWindowStatus()==3&&!ui_visible();
     if(collection&&!s_collectionOpen){s_collectionPage=-1;s_menuLeft={};s_menuRight={};s_menuDpad={};s_menuTrigger={};}
@@ -779,7 +780,7 @@ ModResult initialize_kcrux_controls(ModError* error){
     if(result!=MOD_OK)return mods::set_error(error,result,"could not install five-slot controls");
     // Save lifecycle owns migration; title-screen data must not be saved as a real slot.
     s_loaded=false;reset_transient();
-    svc_log->info(mod_ctx,"Rewired controls revision 27: aiming movement, Y map warp and Zora swim vertical controls");return MOD_OK;
+    svc_log->info(mod_ctx,"Rewired controls revision 28: RT map warp preserves Y marking; aiming movement and Zora swim controls retained");return MOD_OK;
 }
 void shutdown_kcrux_controls(){
     mods::hook::uninstall<RewiredMixOn>(svc_hook);mods::hook::uninstall<RewiredMixOff>(svc_hook);

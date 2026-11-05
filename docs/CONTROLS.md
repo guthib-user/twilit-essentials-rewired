@@ -13,7 +13,7 @@
 | LB tap / hold | Full map / minimap toggle |
 | RB | Items |
 | L3 / R3 | Midna / first person |
-| Y in the full map | Native Warp selection, subject to game eligibility |
+| RT in the full map | Native Warp selection, subject to game eligibility; Y keeps Essentials' map marking |
 | Left / right stick while aiming on foot | Move / aim; configurable under Rewired |
 | Left-stick up/down during Zora underwater swimming | Reversed; configurable under Rewired, compatible with Better Swimming |
 

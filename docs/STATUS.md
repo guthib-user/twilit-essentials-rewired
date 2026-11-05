@@ -1,8 +1,8 @@
 # Current status
 
-Updated 2026-11-05. Revision **27** is staged for the next full launch of Rewired
-Playtest: core **0.1.6**, unchanged HUD **0.1.4**, slot service **1.4**. Revision
-**26** remains installed in the currently running game. The launcher validates
+Updated 2026-11-05. Revision **28** is staged for the next full launch of Rewired
+Playtest: core **0.1.7**, unchanged HUD **0.1.4**, slot service **1.4**. Revision
+**27** is currently installed. The launcher validates
 the staged packages and retains a rollback copy before installation. Normal TP
 Custom, the shared AppImage, player saves and unrelated settings are unchanged.
 
@@ -16,6 +16,12 @@ a full native Items/Settings extension is still unavailable in that package.
 
 ## Last release and verification
 
+Revision 28 corrects the full-map Warp input to **RT**, preserving Y for
+Essentials' map marking. The user explicitly authorized RT in this menu context.
+Trigger hysteresis and held-input suppression use the existing input machinery;
+native warp eligibility checks remain intact. Production build and core checks
+pass; marking/warp gameplay confirmation remains with the player.
+
 Revision 27 restores left-stick movement with right-stick aiming for on-foot
 Bow/Slingshot, Boomerang, Hookshot, Ball and Chain, and Dominion Rod subject
 procedures. Scoped and mounted aiming are excluded. A live isolated Bow test
@@ -23,8 +29,9 @@ verified movement without changing aim, aiming without changing position, and
 both simultaneously with modern graphics and Compass. The later-game weapons
 share the hook but have not each been playtested.
 
-Full-map Y now supplies native Z for Warp selection. This restores the missing
-input without changing native portal/story/temporary warp restrictions. It does
+Full-map RT now supplies native Z for Warp selection (corrected from revision
+27's conflicting Y mapping). This restores the missing input without changing
+native portal/story/temporary warp restrictions. It does
 not insert a new dialogue choice into Midna's menu. A complete human warp trip
 still needs player confirmation.
 
@@ -82,6 +89,7 @@ These are ignored local files; they are not required for ordinary code work:
   oversized upload check.
 - `build/revision26-patched-debug.txt`: separate exit-time teardown failure.
 - `build/revision27-staged.json`: candidate hashes and pending update location.
+- `build/revision28-staged.json`: corrected RT map Warp candidate hashes.
 - `build/revision27-aim-movement.json`: simultaneous Bow movement/aim result.
 - `build/revision27-core-build.log`, `revision27-test-build.log`: build checks.
 
