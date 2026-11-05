@@ -1,0 +1,27 @@
+/baseline/
+/vendor/
+/build/
+/dist/
+/references/
+/visuals/reference/
+__pycache__/
+/dawnlight/
+/test-profile/
+/test-profile-rewired/
+/te-inspect/
+/deploy/install.lock
+/deploy/pending/
+*.gci
+*.dmp
+*.core
+*.rvz
+*.iso
+*.wbfs
+*.dusk
+*.AppImage
+*.mp4
+*.ppm
+# Locally licensed controller artwork; provision from the user's installed pack.
+/rewired-hud/res/kcrux/xbox-bumper.rgba8
+/visuals/*.png
+/visuals/prompt-index.json

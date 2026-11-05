@@ -1,0 +1,4 @@
+Henriko Magnifico Xbox controller prompt pack, already installed by the user.
+Source: textures/tex1_48x28_00e15bb6d0caba17_2.png from kcrux-xbox-prompts.dusk.
+PNG SHA256: 68d3d957ace011db454e11b20fd9d3fb4a1e63cd3a5433a0d55b00e57338ffc8
+Original 1056x616 pixels preserved, converted only to native GX RGBA8 tiling. No newly drawn artwork.

@@ -1,0 +1,5 @@
+TP Classic Modern Controller UI by XandasLegend.
+Original four-circle HUD ornament, unmodified BTI.
+Source: https://github.com/XandasL/TP-CM-Controller-UI/blob/ebbe25b16b45ab30119df52df5173e290429be0f/res/ornament/hud_ornament.bti
+BTI SHA256: 164794db2764b29e3431ad1eebaf1fdf0ad9efd69742ab78aedd0168e0be018c
+Licensed MIT; see HUD-ORNAMENT-LICENSE.txt.
