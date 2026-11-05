@@ -13,11 +13,19 @@
 | LB tap / hold | Full map / minimap toggle |
 | RB | Items |
 | L3 / R3 | Midna / first person |
+| Y in the full map | Native Warp selection, subject to game eligibility |
+| Left / right stick while aiming on foot | Move / aim; configurable under Rewired |
+| Left-stick up/down during Zora underwater swimming | Reversed; configurable under Rewired, compatible with Better Swimming |
 
 Contextual actions take precedence over Y jump. RT must remain available for
 item use; do not reintroduce major native R secondary-action conflicts there.
 The five displayed slots, both inventory frontends, and native consumers must
 agree about an item's ownership.
+
+The swim reversal does not apply to surface movement, menus, walking in Zora
+armor, or the right-stick camera. The aiming movement option excludes scoped
+and mounted aiming. Both options default on in modern mode; legacy mode retains
+the original behavior. Restart once to load the new package.
 
 ## Cues
 

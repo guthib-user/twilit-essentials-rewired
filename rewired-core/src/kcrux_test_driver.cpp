@@ -170,7 +170,7 @@ bool s_quitting=false;
 unsigned s_frame = 0, s_buttons = 0;
 unsigned s_objectPresses = 0;
 unsigned s_buttonPolls = 0, s_axisPolls = 0;
-int s_rt = 0, s_lx = 0, s_ly = 0, s_lt = 0, s_grant = 0;
+int s_rt = 0, s_lx = 0, s_ly = 0, s_lt = 0, s_grant = 0, s_rx=0, s_ry=0;
 GfxComputeTypeHandle s_compute = 0;
 GfxStageHookHandle s_stage = 0;
 WGPUBuffer s_readback = nullptr;
@@ -195,7 +195,7 @@ HookAction axis(ModContext*, void* args, void* result, void*) {
     ++s_axisPolls;
     const int index = mods::arg<int>(args, 1);
     *static_cast<short*>(result) = index == 5 ? s_rt : index == 4 ? s_lt :
-        index == 0 ? s_lx : index == 1 ? s_ly : 0;
+        index == 0 ? s_lx : index == 1 ? s_ly : index==2?s_rx:index==3?s_ry:0;
     return HOOK_SKIP_ORIGINAL;
 }
 void mapped(WGPUMapAsyncStatus status, WGPUStringView, void*, void*) {
@@ -316,14 +316,14 @@ void update_kcrux_test_driver() {
         PADButtonMapping map[PAD_BUTTON_COUNT]={{0,PAD_BUTTON_A},{1,PAD_BUTTON_B},{2,PAD_BUTTON_X},{3,PAD_BUTTON_Y},{6,PAD_BUTTON_START},{0xffffffff,PAD_TRIGGER_Z},{9,PAD_TRIGGER_L},{10,PAD_TRIGGER_R},{11,PAD_BUTTON_UP},{12,PAD_BUTTON_DOWN},{13,PAD_BUTTON_LEFT},{14,PAD_BUTTON_RIGHT}};
         s_mappingFn(0,map);s_bound=true;break;
     }
-    unsigned buttons=0; int rt=0,lx=0,ly=0,lt=0,grant=0;
-    std::ifstream input(s_dir/"input.txt");input>>buttons>>rt>>lx>>ly>>lt>>grant;
+    unsigned buttons=0; int rt=0,lx=0,ly=0,lt=0,grant=0,rx=0,ry=0;
+    std::ifstream input(s_dir/"input.txt");input>>buttons>>rt>>lx>>ly>>lt>>grant;input>>rx>>ry;
     if(grant<0 && !s_quitting && s_pushEvent) {
         alignas(8) unsigned char event[128]{};
         *reinterpret_cast<uint32_t*>(event)=0x100; // SDL_EVENT_QUIT: clean engine shutdown.
         s_quitting=true;s_pushEvent(event);return;
     }
-    s_buttons=buttons; s_rt=rt; s_lx=lx; s_ly=ly; s_lt=lt;
+    s_buttons=buttons; s_rt=rt; s_lx=lx; s_ly=ly; s_lt=lt;s_rx=rx;s_ry=ry;
     auto* link=daAlink_getAlinkActorClass();
     const bool objectHeld=link&&link->wallGrabButton();
     const bool objectPressed=link&&link->wallGrabTrigger();

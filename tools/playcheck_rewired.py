@@ -13,11 +13,11 @@ def alive():
         os.kill(pid,0)
         return Path(f'/proc/{pid}/stat').read_text().split()[2]!='Z'
     except (ProcessLookupError,FileNotFoundError):return False
-def control(buttons=0,rt=0,lx=0,ly=0,lt=0,grant=0):
+def control(buttons=0,rt=0,lx=0,ly=0,lt=0,grant=0,rx=0,ry=0):
     assert alive(),'Candidate has exited'
-    tmp=P/'input.next';tmp.write_text(f'{buttons} {rt} {lx} {ly} {lt} {grant}');tmp.replace(P/'input.txt')
-def pulse(buttons=0,rt=0,lx=0,ly=0,lt=0,hold=.18,settle=.5,grant=0):
-    control(buttons,rt,lx,ly,lt,grant);time.sleep(hold);control(grant=grant);time.sleep(settle);return state()
+    tmp=P/'input.next';tmp.write_text(f'{buttons} {rt} {lx} {ly} {lt} {grant} {rx} {ry}');tmp.replace(P/'input.txt')
+def pulse(buttons=0,rt=0,lx=0,ly=0,lt=0,hold=.18,settle=.5,grant=0,rx=0,ry=0):
+    control(buttons,rt,lx,ly,lt,grant,rx,ry);time.sleep(hold);control(grant=grant);time.sleep(settle);return state()
 def snap():
     before={f.name:f.stat().st_mtime_ns for f in P.glob('capture-*.ppm')}
     (P/'capture.request').touch()

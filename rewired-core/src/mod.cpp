@@ -18,11 +18,15 @@ IMPORT_SERVICE(GfxService, svc_gfx);
 ModResult register_settings_ui(ModError* error);
 ModResult initialize_rewired_crash_compat(ModError* error);
 namespace dawnlight { ModResult initialize_rewired_jump(ModError* error); void shutdown_rewired_jump(); }
+namespace dawnlight { ModResult initialize_rewired_aim_movement(ModError* error); }
+namespace dawnlight { ModResult initialize_rewired_swim_controls(ModError* error); }
 extern "C" {
 MOD_EXPORT ModResult mod_initialize(ModError* error) {
     if (auto result = initialize_rewired_crash_compat(error); result != MOD_OK) return result;
     if (auto result = dawnlight::initialize_kcrux_controls(error); result != MOD_OK) return result;
     if (auto result = dawnlight::initialize_rewired_jump(error); result != MOD_OK) return result;
+    if (auto result = dawnlight::initialize_rewired_aim_movement(error); result != MOD_OK) return result;
+    if (auto result = dawnlight::initialize_rewired_swim_controls(error); result != MOD_OK) return result;
     if (auto result = register_settings_ui(error); result != MOD_OK) return result;
 #ifdef KCRUX_TEST_DRIVER
     return dawnlight::initialize_kcrux_test_driver(error);

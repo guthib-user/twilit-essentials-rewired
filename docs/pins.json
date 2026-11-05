@@ -1,11 +1,12 @@
 {
   "release": {
-    "revision": 26,
-    "core": "0.1.5",
+    "revision": 27,
+    "state": "staged; revision 26 remains installed until next launcher start",
+    "core": "0.1.6",
     "hud": "0.1.4",
     "slot_service": "1.4",
     "packages_sha256": {
-      "twilit_rewired_controls.dusk": "e338e1c43a0d89c37af4e7badacc586e6ab41b9ee43ad314318c2e7ec5c1a0cc",
+      "twilit_rewired_controls.dusk": "0e15b9a6e28f989021246463a97993d3e809fa585b1597d6138e074b07e78307",
       "twilit_rewired_hud.dusk": "3b978305b557d2c4625e23defaab332006900c48dbba23661d17664e13d323e7"
     }
   },

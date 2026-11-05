@@ -1,9 +1,10 @@
 # Current status
 
-Updated 2026-11-05. Revision **26** is installed in the separate Rewired Playtest
-instance. Core **0.1.5**, HUD **0.1.4**, slot service **1.4**. The normal TP Custom
-instance and shared Dusklight AppImage were preserved. This documentation update
-does not change the installed game.
+Updated 2026-11-05. Revision **27** is staged for the next full launch of Rewired
+Playtest: core **0.1.6**, unchanged HUD **0.1.4**, slot service **1.4**. Revision
+**26** remains installed in the currently running game. The launcher validates
+the staged packages and retains a rollback copy before installation. Normal TP
+Custom, the shared AppImage, player saves and unrelated settings are unchanged.
 
 ## Current behavior
 
@@ -14,6 +15,25 @@ switches on restart. Dawnlight is disabled in this instance; Twilit Essentials
 a full native Items/Settings extension is still unavailable in that package.
 
 ## Last release and verification
+
+Revision 27 restores left-stick movement with right-stick aiming for on-foot
+Bow/Slingshot, Boomerang, Hookshot, Ball and Chain, and Dominion Rod subject
+procedures. Scoped and mounted aiming are excluded. A live isolated Bow test
+verified movement without changing aim, aiming without changing position, and
+both simultaneously with modern graphics and Compass. The later-game weapons
+share the hook but have not each been playtested.
+
+Full-map Y now supplies native Z for Warp selection. This restores the missing
+input without changing native portal/story/temporary warp restrictions. It does
+not insert a new dialogue choice into Midna's menu. A complete human warp trip
+still needs player confirmation.
+
+The enabled-by-default **Reverse Zora swim up/down** setting reverses physical
+left-stick Y once during pad normalization, only in Zora underwater swim
+procedures. Better Swimming receives that same normalized input. Surface
+swimming, walking, menus and right-stick input are excluded. Production and
+fixture builds pass; actual underwater feel remains a player playtest. Core
+regressions pass; production packaging has the test driver disabled.
 
 Revision 26 adds a hat-animation lifetime cleanup and a private, hash-verified
 Dusklight runtime with larger renderer buffers. Two original player crash dumps
@@ -29,6 +49,15 @@ were unchanged at installation. See [pins](pins.json) for release hashes and
 
 ## Open work and limits
 
+- **HUD recovery:** after Zora swimming, gameplay HUD vanished while inventory
+  HUD remained visible. The player disabled Essentials' independent HUD auto
+  fade and hard-reset; the HUD returned, and a live read showed full native
+  button/life alpha. These overlapping changes do not prove the trigger or a
+  code fix. Revision 27 does not force HUD visibility or alter normal fades.
+- **Mounted third-person aiming investigation:** feasible using a scoped camera
+  mode/view change plus native weapon yaw/pitch and trajectory sight. Mounted
+  Bow/Slingshot bypass the on-foot subject procedure, so the new movement hook
+  deliberately excludes riding. No mounted camera change is included yet.
 - **Open:** loaded-game process exit crashed in `dRes_info_c::deleteArchiveRes`
   during resource teardown. Revision 26 does not claim to fix this.
 - **Player playtest:** complete the escort past the previous crash point. Only
@@ -52,5 +81,8 @@ These are ignored local files; they are not required for ordinary code work:
 - `build/revision26-buffer-stress.json`, `revision26-buffer-stress.log`:
   oversized upload check.
 - `build/revision26-patched-debug.txt`: separate exit-time teardown failure.
+- `build/revision27-staged.json`: candidate hashes and pending update location.
+- `build/revision27-aim-movement.json`: simultaneous Bow movement/aim result.
+- `build/revision27-core-build.log`, `revision27-test-build.log`: build checks.
 
 The player's current save is authoritative. Never restore a test card over it.

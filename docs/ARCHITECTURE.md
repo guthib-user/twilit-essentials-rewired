@@ -7,6 +7,8 @@
 | Input edges, trigger state and map tap/hold gesture | `rewired-core/src/kcrux_input_state.hpp` |
 | Published slot service and implementation | `rewired-core/include/kcrux/controls.h`, `src/core_service.cpp` |
 | Jump provider, settings, initialization | `rewired-core/src/manual_jump.cpp`, `settings_ui.cpp`, `mod.cpp` |
+| On-foot movement/aim stick separation | `rewired-core/src/aim_movement.cpp` |
+| Zora underwater left-stick vertical reversal | `rewired-core/src/swim_controls.cpp` |
 | Hat-animation lifetime guard | `rewired-core/src/crash_compat.cpp` |
 | HUD rendering, cues, native masking and menu presentation | `rewired-hud/src/kcrux_prompts.cpp` |
 | HUD coordinates and saved options | `rewired-hud/src/kcrux_hud_layout.hpp`, `config.cpp` |
