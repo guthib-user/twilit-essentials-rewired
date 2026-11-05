@@ -1,7 +1,7 @@
 # Current status
 
-Updated 2026-11-05. Revision **28** is staged for the next full launch of Rewired
-Playtest: core **0.1.7**, unchanged HUD **0.1.4**, slot service **1.4**. Revision
+Updated 2026-11-05. Revision **29** is staged for the next full launch of Rewired
+Playtest: core **0.1.8**, unchanged HUD **0.1.4**, slot service **1.4**. Revision
 **27** is currently installed. The launcher validates
 the staged packages and retains a rollback copy before installation. Normal TP
 Custom, the shared AppImage, player saves and unrelated settings are unchanged.
@@ -15,6 +15,20 @@ switches on restart. Dawnlight is disabled in this instance; Twilit Essentials
 a full native Items/Settings extension is still unavailable in that package.
 
 ## Last release and verification
+
+Revision 29 fixes the forward-only aiming walk slowdown. Native next-action
+handling supplies an attention movement limit, but the forward branch uses
+normal walking and changes to its normal limit only during animation selection,
+after calculating speed. Rewired now supplies that same normal limit before
+the native forward movement calculation. Acceleration, analog response,
+deceleration and environmental caps remain native; targeted movement and Ball
+and Chain pre-swing are excluded from this correction.
+
+An isolated, full-graphics Bow test reproduced forward speed 9.1 before the
+patch and 16.1 after it (the native ready-item limit), with sideways speed still
+13. Partial-stick speed, stopping and right-stick aim without position change
+passed in the actual Bow aiming procedure. Production build and core regressions
+pass. Revision 29 includes revision 28.
 
 Revision 28 corrects the full-map Warp input to **RT**, preserving Y for
 Essentials' map marking. The user explicitly authorized RT in this menu context.
@@ -90,6 +104,9 @@ These are ignored local files; they are not required for ordinary code work:
 - `build/revision26-patched-debug.txt`: separate exit-time teardown failure.
 - `build/revision27-staged.json`: candidate hashes and pending update location.
 - `build/revision28-staged.json`: corrected RT map Warp candidate hashes.
+- `build/revision29-staged.json`: forward aiming fix and cumulative candidate hashes.
+- `build/revision29-aim-speed-baseline.json`, `revision29-aim-speed-patched.json`,
+  `revision29-aim-speed-verification.json`: focused live aiming speed checks.
 - `build/revision27-aim-movement.json`: simultaneous Bow movement/aim result.
 - `build/revision27-core-build.log`, `revision27-test-build.log`: build checks.
 

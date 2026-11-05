@@ -5,6 +5,7 @@
 #include "d/d_com_inf_game.h"
 #include "d/d_camera.h"
 #include "m_Do/m_Do_controller_pad.h"
+#include "SSystem/SComponent/c_math.h"
 #include "mods/svc/hook.hpp"
 #include <algorithm>
 #include <vector>
@@ -33,6 +34,19 @@ bool supported(daAlink_c* link) {
     }
 }
 
+void prepare_forward_speed_limit(daAlink_c* link) {
+    if(link->mTargetedActor || !link->checkInputOnR() ||
+       cM_scos(static_cast<s16>(link->mMoveAngle-link->shape_angle.y))<.99f ||
+       (link->mProcID==daAlink_c::PROC_IRON_BALL_SUBJECT && link->checkIronBallPreSwingAnime()))
+        return;
+    // checkNextAction supplies the attention speed limit, but the forward
+    // branch of setSpeedAndAngleAtn uses ordinary walking, whose animation
+    // switches to the normal movement limit only AFTER speed was calculated.
+    // Supply that same limit before calculating speed. Keep native acceleration,
+    // analog scaling, braking and environmental restrictions intact.
+    link->mMaxSpeed=link->mpHIO->mMove.m.mMaxSpeed;
+}
+
 HookAction before_aim(ModContext*,void* args,void*,void*) {
     s_scopes.emplace_back();
     auto* link=mods::arg<daAlink_c*>(args,0);
@@ -44,6 +58,7 @@ HookAction before_aim(ModContext*,void* args,void*,void*) {
     // Keep native item procedures, sights and transitions. Restore the earlier
     // Dawnlight movement/animation behavior at their shared aiming consumer.
     const s16 facing=link->shape_angle.y;
+    prepare_forward_speed_limit(link);
     link->setSpeedAndAngleAtn();
     link->shape_angle.y=facing;
     const bool heavy=link->mProcID==daAlink_c::PROC_IRON_BALL_SUBJECT;

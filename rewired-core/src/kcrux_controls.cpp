@@ -780,7 +780,7 @@ ModResult initialize_kcrux_controls(ModError* error){
     if(result!=MOD_OK)return mods::set_error(error,result,"could not install five-slot controls");
     // Save lifecycle owns migration; title-screen data must not be saved as a real slot.
     s_loaded=false;reset_transient();
-    svc_log->info(mod_ctx,"Rewired controls revision 28: RT map warp preserves Y marking; aiming movement and Zora swim controls retained");return MOD_OK;
+    svc_log->info(mod_ctx,"Rewired controls revision 29: forward aim movement corrected; RT map warp and Zora swim controls retained");return MOD_OK;
 }
 void shutdown_kcrux_controls(){
     mods::hook::uninstall<RewiredMixOn>(svc_hook);mods::hook::uninstall<RewiredMixOff>(svc_hook);

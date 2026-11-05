@@ -520,6 +520,9 @@ void update_kcrux_test_driver() {
                     <<",\"x\":"<<link->current.pos.x<<",\"z\":"<<link->current.pos.z
                     <<",\"doStatus\":"<<unsigned(dComIfGp_getDoStatus())<<",\"digEmphasis\":"<<(dComIfGp_isYSetFlag(2)?"true":"false")
                     <<",\"facing\":"<<link->shape_angle.y<<",\"moveAngle\":"<<link->mMoveAngle
+                    <<",\"normalSpeed\":"<<link->mNormalSpeed<<",\"maxSpeed\":"<<link->mMaxSpeed
+                    <<",\"stickValue\":"<<link->mStickValue<<",\"moveValue\":"<<link->mMoveValue
+                    <<",\"moveDirection\":"<<unsigned(link->field_0x2f98)
                     <<",\"itemHeld\":"<<unsigned(link->mItemButton)<<",\"itemTrigger\":"<<unsigned(link->mItemTrigger)
                     <<",\"objectHeld\":"<<(objectHeld?"true":"false")<<",\"objectPresses\":"<<s_objectPresses
                     <<",\"midnaTrigger\":"<<(link->midnaTalkTrigger()?"true":"false")
