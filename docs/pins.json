@@ -1,0 +1,37 @@
+{
+  "release": {
+    "revision": 26,
+    "core": "0.1.5",
+    "hud": "0.1.4",
+    "slot_service": "1.4",
+    "packages_sha256": {
+      "twilit_rewired_controls.dusk": "e338e1c43a0d89c37af4e7badacc586e6ab41b9ee43ad314318c2e7ec5c1a0cc",
+      "twilit_rewired_hud.dusk": "3b978305b557d2c4625e23defaab332006900c48dbba23661d17664e13d323e7"
+    }
+  },
+  "dusklight": {
+    "version": "2.0.3",
+    "platform": "linux-x86_64",
+    "source_repository": "https://github.com/TwilitRealm/dusklight.git",
+    "source_commit": "40457c6adb381928e4b5fef6ed459ed291edd5e2",
+    "aurora_commit": "3227d76c60e1e782ca576610bce61c9e7744d8be",
+    "original_executable_sha256": "f07da293162ed4736b2877ce2f6ce2cdc26031aa40fbe2a09db0b12f9e5e2a9e",
+    "private_executable_sha256": "43f45837a8d49061b3de4b765adab2b6ceba26f156a5fbc53fd7a5a9f5b4fc2e",
+    "private_buffer_mib": {
+      "vertices": 20,
+      "uniforms": 24,
+      "indices": 8,
+      "storage": 32,
+      "textures": 24
+    }
+  },
+  "twilit_essentials": {
+    "version": "3.0.1",
+    "package_sha256": "17b40c012ad5a598a9aeaa24345c7708a96f8828c1052491b1518e6e83f654f3",
+    "native_collection_service": "1.0"
+  },
+  "dawnlight_history": {
+    "base_commit": "b5e9046cd98bdd8593ab2cf219d72a0f61ef7213",
+    "required_enabled": false
+  }
+}

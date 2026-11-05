@@ -1,6 +1,6 @@
 from pathlib import Path
 import json,time,os
-ROOT=Path('/home/kwaryoip/Documents/Codex/2026-11-02/io/work/control-redesign')
+ROOT=Path(__file__).resolve().parents[1]
 P=ROOT/'test-profile-rewired'
 def state():
     for _ in range(30):

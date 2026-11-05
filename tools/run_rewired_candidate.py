@@ -1,6 +1,6 @@
 from pathlib import Path
 import os, shutil, subprocess, time, json, sys
-root=Path('/home/kwaryoip/Documents/Codex/2026-11-02/io/work/control-redesign')
+root=Path(__file__).resolve().parents[1]
 profile=root/'test-profile-rewired'
 def existing_candidate():
     for entry in Path('/proc').glob('[0-9]*/cmdline'):
@@ -31,8 +31,8 @@ config_path.write_text(json.dumps(config,indent=2)+'\n')
 for p in profile.glob('capture-*.ppm'):p.unlink()
 (profile/'state.json').unlink(missing_ok=True)
 log=(root/'build/rewired-integration.log').open('w')
-runtime=os.environ.get('REWIRED_TEST_RUNTIME','/home/kwaryoip/Applications/Dusklight/Dusklight-v2.0.3-linux-x86_64.AppImage')
-command=[runtime,'--user-dir',str(profile),'--backend','vulkan','--log-level','info','/home/kwaryoip/Applications/Dusklight/Game data/Twilight Princess - Wii USA Rev 2.rvz']
+runtime=os.environ.get('REWIRED_TEST_RUNTIME',str(Path.home()/'Applications/Dusklight/Dusklight-v2.0.3-linux-x86_64.AppImage'))
+command=[runtime,'--user-dir',str(profile),'--backend','vulkan','--log-level','info',str(Path.home()/'Applications/Dusklight/Game data/Twilight Princess - Wii USA Rev 2.rvz')]
 if '--headless' in sys.argv:
     width,height=('1920','1080') if '--full-graphics' in sys.argv else ('1280','720')
     command=['gamescope','--backend','headless','-w',width,'-h',height,'-W',width,'-H',height,'-r','60','--','env','SDL_VIDEODRIVER=x11']+command

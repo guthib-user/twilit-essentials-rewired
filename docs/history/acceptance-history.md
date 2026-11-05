@@ -1,3 +1,6 @@
+> Historical snapshots; later revisions supersede earlier behavior. Read
+> [current status](../STATUS.md) before using these notes.
+
 # Control and prompt acceptance checklist
 
 ## Revision 26 crash checks

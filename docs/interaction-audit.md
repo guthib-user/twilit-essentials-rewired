@@ -1,6 +1,8 @@
 # Five-slot native interaction audit
 
-Target: Dusklight 2.0.3 `40457c6`, Dawnlight's optional KCRUX five-slot mode.
+Original audit: Dusklight 2.0.3 `40457c6`, carried forward from Dawnlight's
+optional five-slot implementation into Rewired. Individual verification below
+retains its original revision; consult [current status](STATUS.md) for open work.
 The five saved assignments remain canonical. Native indices 0/1 are Left/Right;
 native index 2 is a transient projection of the active Up/Down/RT assignment.
 Native `checkItemSetButton` instead uses 2 as its *absent* sentinel. Never return
