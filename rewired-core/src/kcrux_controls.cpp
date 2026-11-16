@@ -8,6 +8,8 @@
 #include "d/d_com_inf_game.h"
 #include "d/d_meter2_info.h"
 #include "d/d_menu_ring.h"
+#include "d/d_menu_window.h"
+#include "JSystem/JUtility/JUTGamePad.h"
 #include "d/d_menu_item_explain.h"
 #include "d/d_msg_flow.h"
 #include "m_Do/m_Do_controller_pad.h"
@@ -37,6 +39,8 @@ DEFINE_HOOK(&dMenu_Ring_c::setActiveCursor,KcruxRingAssign);
 DEFINE_HOOK(&dMenu_Ring_c::isMixItemOn,RewiredMixOn);
 DEFINE_HOOK(&dMenu_Ring_c::isMixItemOff,RewiredMixOff);
 DEFINE_HOOK(&dComIfGs_setSelectItemIndex,RewiredCollectionAssign);
+DEFINE_HOOK(&dMw_c::_execute,RewiredCollectionCursorInput);
+DEFINE_HOOK_SYMBOL("SDL_GetGamepadButton",bool(SDL_Gamepad*,int),RewiredCollectionRawButton);
 DEFINE_HOOK(&daAlink_c::checkItemChangeFromButton,KcruxStow);
 DEFINE_HOOK(&daAlink_c::checkItemSetButton,KcruxItemSetButton);
 DEFINE_HOOK(&daAlink_c::checkNewItemChange,KcruxNewItemChange);
@@ -63,7 +67,15 @@ kcrux::Button s_items,s_mapMenu;
 kcrux::Trigger s_mapWarp;
 kcrux::Button s_sword,s_cancel,s_view,s_object,s_midna;
 kcrux::Trigger s_fire,s_quick,s_target;
-kcrux::Trigger s_menuTrigger;
+kcrux::Trigger s_menuTrigger,s_menuTabLT,s_menuTabRT,s_subTabLT,s_subTabRT,s_wheelDirect;
+struct CollectionInputScope{
+    SDL_Gamepad* pad=nullptr;
+    JUTGamePad* native=nullptr;
+    u32 nativeTrigger=0;
+};
+thread_local std::vector<CollectionInputScope> s_collectionInput;
+int s_previousWindow=0;
+bool s_mapFromCollection=false;
 kcrux::Button s_menuLeft,s_menuRight,s_menuCombine,s_wheelCombine;
 u8 s_collectionSelection=255;
 bool s_collectionCombine=false;
@@ -92,6 +104,35 @@ u32 s_reelHeld=0;
 constexpr int NativeFlags[3]={PAD_BUTTON_X,PAD_BUTTON_Y,PAD_TRIGGER_Z};
 bool blocked();
 bool ui_visible();
+HookAction before_collection_cursor_input(ModContext*,void*,void*,void*){
+    auto& scope=s_collectionInput.emplace_back();
+    if(!kcrux_controls_enabled()||!s_collectionOpen||
+       (s_collectionPage!=2&&s_collectionPage!=3)||ui_visible())return HOOK_CONTINUE;
+    const int index=PADGetIndexForPort(PAD_1);
+    if(index<0)return HOOK_CONTINUE;
+    // Essentials 3.0.2 reads raw LB and the pre-projection JUT Z for its
+    // Collection subpages. Keep LB projected to the outer tab, and lend
+    // only this menu update the physical LT/RT for the inner row.
+    scope.pad=PADGetSDLGamepadForIndex(index);
+    if(scope.pad&&s_subTabRT.button.pressed){
+        scope.native=JUTGamePad::getGamePad(PAD_1);
+        if(scope.native){
+            scope.nativeTrigger=scope.native->mButton.mTrigger;
+            scope.native->mButton.mTrigger|=PAD_TRIGGER_Z;
+        }
+    }
+    return HOOK_CONTINUE;
+}
+void after_collection_cursor_input(ModContext*,void*,void*,void*){
+    if(s_collectionInput.empty())return;
+    const auto state=s_collectionInput.back();s_collectionInput.pop_back();
+    if(state.native)state.native->mButton.mTrigger=state.nativeTrigger;
+}
+void after_collection_raw_button(ModContext*,void* args,void* result,void*){
+    if(!s_collectionInput.empty()&&s_collectionInput.back().pad&&
+       mods::arg<SDL_Gamepad*>(args,0)==s_collectionInput.back().pad&&mods::arg<int>(args,1)==9)
+        *static_cast<bool*>(result)=s_subTabLT.button.held;
+}
 HookAction assign_from_collection(ModContext*,void*,void*,void*){
     // The native three-channel assignment transaction must never mutate the
     // compatibility mirrors while the five-slot menu owns assignment.
@@ -120,7 +161,7 @@ HookAction map_action_trigger(ModContext*,void* args,void* result,void*){
     }
     if(action!=dusk::ActionBinds::OPEN_MAP_SCREEN&&action!=dusk::ActionBinds::TOGGLE_MINIMAP)return HOOK_CONTINUE;
     *static_cast<bool*>(result)=action==dusk::ActionBinds::OPEN_MAP_SCREEN
-        ?((dMeter2Info_getWindowStatus()==4||dMeter2Info_getWindowStatus()==5)?s_mapMenu.pressed:s_mapOverride&&s_mapGesture.tap)
+        ?((dMeter2Info_getWindowStatus()==4||dMeter2Info_getWindowStatus()==5)?(!s_mapFromCollection&&s_mapMenu.pressed):s_mapOverride&&s_mapGesture.tap)
         :s_mapOverride&&s_mapGesture.hold;
     return HOOK_SKIP_ORIGINAL;
 }
@@ -233,6 +274,7 @@ bool persist(){
     return svc_save->set_blob(mod_ctx,blob_name(),data.data(),data.size())==MOD_OK;
 }
 void reset_transient(){s_active=-1;s_owner=nullptr;s_actor=0;s_fireState.reset();s_wheelRequest=-1;s_mapWarp={};
+    s_previousWindow=0;s_mapFromCollection=false;
     s_fishingRodSlot=-1;s_fishingProxy=-1;s_fishingOwner=nullptr;s_fishingStarted=false;
     s_tradeSlot=-1;s_tradeFrames=0;s_tradeOwner=nullptr;s_tradePending=false;s_tradeSeenEvent=false;
     s_reelRodSlot=-1;s_reelActor=nullptr;}
@@ -478,71 +520,102 @@ void after_pad_read(ModContext*,void*,void*,void*){
            (!s_tradeSeenEvent&&++s_tradeFrames>45))
             clear_trade_projection();
     }
-    const bool stop=blocked()||formChanged,ring=dMeter2Info_getWindowStatus()==2&&!ui_visible();
+    const int window=dMeter2Info_getWindowStatus();
+    const bool ui=ui_visible();
+    const bool stop=blocked()||formChanged,ring=window==2&&!ui;
+    const bool collection=window==3&&!ui;
+    const bool map=(window==4||window==5)&&!ui;
+    if(window!=s_previousWindow){
+        if(window==4||window==5)s_mapFromCollection=s_previousWindow==3;
+        else s_mapFromCollection=false;
+        s_previousWindow=window;
+    }
     const auto index=PADGetIndexForPort(PAD_1);auto* pad=index<0?nullptr:PADGetSDLGamepadForIndex(index);
     const auto button=[&](int b){return pad&&s_button&&s_button(pad,b);};
-    const int axis=pad&&s_axis?s_axis(pad,5):0;
+    const int rt=pad&&s_axis?s_axis(pad,5):0;
+    const int lt=pad&&s_axis?s_axis(pad,4):0;
     auto& input=mDoCPd_c::getCpadInfo(PAD_1);
-    const bool fullMap=dMeter2Info_getWindowStatus()==4&&!ui_visible();
-    s_mapWarp.sample(axis,!fullMap);
-    if(fullMap){
-        // Native Z selects Warp on the full map. Physical RT supplies it here;
-        // preserve Y for Essentials' map marking. Native eligibility still runs.
-        input.mButtonFlags&=~PAD_TRIGGER_Z;
-        input.mPressedButtonFlags&=~PAD_TRIGGER_Z;
+
+    // Sample every button even while a screen owns it, so a held assignment,
+    // tab or map action cannot turn into a fresh gameplay input on exit.
+    constexpr int physical[4]={13,14,11,12};
+    for(int i=0;i<4;++i)s_dpad[i].sample(button(physical[i]),stop&&!ring);
+    s_items.sample(button(10),stop&&!ring);
+    s_quick.sample(rt,stop&&!ring);s_fire.sample(rt,stop);
+    s_target.sample(lt,stop);
+    s_view.sample(button(4),stop&&!ring);s_sword.sample(button(2),stop);s_cancel.sample(button(1),stop);s_object.sample(button(3),stop);
+    s_wheelCombine.sample(button(3),!ring);
+    s_wheelDirect.sample(lt,!ring);
+    if(!ring)s_wheelRequest=-1;
+    if(ring&&s_wheelDirect.button.held){
+        input.mButtonFlags|=PAD_TRIGGER_L;
+        if(s_wheelDirect.button.pressed)input.mPressedButtonFlags|=PAD_TRIGGER_L;
+    }
+    s_mapWarp.sample(rt,!map||window!=4);
+    if(map&&window==4){
+        // Add the physical RT shortcut alongside native Z. Do not change the
+        // map marker's Y, keyboard Z, mouse, or native warp eligibility.
         if(s_mapWarp.button.held)input.mButtonFlags|=PAD_TRIGGER_Z;
         if(s_mapWarp.button.pressed)input.mPressedButtonFlags|=PAD_TRIGGER_Z;
     }
-    const bool collection=dMeter2Info_getWindowStatus()==3&&!ui_visible();
-    if(collection&&!s_collectionOpen){s_collectionPage=-1;s_menuLeft={};s_menuRight={};s_menuDpad={};s_menuTrigger={};}
+
+    if(collection&&!s_collectionOpen)s_collectionPage=-1;
     s_collectionOpen=collection;
-    if(!collection||s_collectionPage!=1){s_collectionTarget=-1;s_collectionCombine=false;s_collectionSelection=255;s_menuCombine={};}
-    if(collection){
-        s_menuLeft.sample(button(9),false);s_menuRight.sample(button(10),false);
-        input.mButtonFlags&=~(PAD_TRIGGER_L|PAD_TRIGGER_R);
-        input.mPressedButtonFlags&=~(PAD_TRIGGER_L|PAD_TRIGGER_R);
+    const bool items=collection&&s_collectionPage==1;
+    if(!items){s_collectionTarget=-1;s_collectionCombine=false;s_collectionSelection=255;}
+    s_menuCombine.sample(button(0),!items);
+    for(int i=0;i<4;++i)s_menuDpad[i].sample(button(physical[i]),!items);
+    s_menuTrigger.sample(rt,!items);
+
+    const bool tabs=collection||(map&&s_mapFromCollection);
+    const bool subtabs=collection&&(s_collectionPage==2||s_collectionPage==3);
+    s_subTabLT.sample(lt,!subtabs);s_subTabRT.sample(rt,!subtabs);
+    s_menuTabLT.sample(lt,!tabs||subtabs);
+    s_menuTabRT.sample(rt,!collection||items||subtabs||s_collectionPage<0);
+    s_menuLeft.sample(button(9)||s_menuTabLT.button.held,!tabs);
+    s_menuRight.sample(button(10)||s_menuTabRT.button.held,!tabs);
+    if(tabs&&pad){
+        // Different native/Essentials consumers read digital L/R or the
+        // analog lock fields. Both must agree about which action owns RT.
+        constexpr u32 shoulders=PAD_TRIGGER_L|PAD_TRIGGER_R;
+        input.mButtonFlags&=~shoulders;input.mPressedButtonFlags&=~shoulders;
         if(s_menuLeft.held)input.mButtonFlags|=PAD_TRIGGER_L;
         if(s_menuLeft.pressed)input.mPressedButtonFlags|=PAD_TRIGGER_L;
         if(s_menuRight.held)input.mButtonFlags|=PAD_TRIGGER_R;
         if(s_menuRight.pressed)input.mPressedButtonFlags|=PAD_TRIGGER_R;
-        if(s_collectionPage==1){
-            s_menuCombine.sample(button(0),false);
+        input.mHoldLockL=s_menuLeft.held;input.mTrigLockL=s_menuLeft.pressed;
+        input.mHoldLockR=s_menuRight.held;input.mTrigLockR=s_menuRight.pressed;
+        input.mTriggerLeft=s_menuLeft.held?1.f:0.f;
+        input.mTriggerRight=s_menuRight.held?1.f:0.f;
+    }
+    if(collection){
+        if(items){
             if(combination_for(s_collectionSelection).owner>=0){
                 if(s_menuCombine.pressed)s_collectionCombine=true;
                 input.mButtonFlags&=~PAD_BUTTON_A;input.mPressedButtonFlags&=~PAD_BUTTON_A;
             }
-            constexpr int physicalMenu[4]={13,14,11,12};
-            for(int i=0;i<4;++i)s_menuDpad[i].sample(button(physicalMenu[i]),false);
-            s_menuTrigger.sample(axis,false);
             for(int i=0;i<4;++i)if(s_menuDpad[i].pressed){s_collectionTarget=i;break;}
             if(s_menuTrigger.button.pressed)s_collectionTarget=4;
-            constexpr u32 oldAssignments=PAD_BUTTON_X|PAD_BUTTON_Y|PAD_TRIGGER_Z;
-            constexpr u32 directions=PAD_BUTTON_LEFT|PAD_BUTTON_RIGHT|PAD_BUTTON_UP|PAD_BUTTON_DOWN;
-            input.mButtonFlags&=~(oldAssignments|directions);
-            input.mPressedButtonFlags&=~(oldAssignments|directions);
-
-        }else{s_menuDpad={};s_menuTrigger={};}
+            constexpr u32 assignments=PAD_BUTTON_X|PAD_BUTTON_Y|PAD_TRIGGER_Z|
+                PAD_BUTTON_LEFT|PAD_BUTTON_RIGHT|PAD_BUTTON_UP|PAD_BUTTON_DOWN;
+            input.mButtonFlags&=~assignments;input.mPressedButtonFlags&=~assignments;
+        }
         return;
     }
-    s_menuLeft={};s_menuRight={};s_menuDpad={};s_menuTrigger={};
-    constexpr int physical[4]={13,14,11,12};
-    for(int i=0;i<4;++i)s_dpad[i].sample(button(physical[i]),stop&&!ring);
-    s_items.sample(button(10),stop&&!ring);
-    s_quick.sample(axis,stop&&!ring);s_fire.sample(axis,stop);
-    s_target.sample(pad&&s_axis?s_axis(pad,4):0,stop);
-    s_view.sample(button(4),stop&&!ring);s_sword.sample(button(2),stop);s_cancel.sample(button(1),stop);s_object.sample(button(3),stop);
-    s_wheelCombine.sample(button(3),!ring);
     if(ring){
         for(int i=0;i<4;++i)if(s_dpad[i].pressed){s_wheelRequest=i;break;}
         if(s_quick.button.pressed)s_wheelRequest=4;
-    }else s_wheelRequest=-1;
+    }
     // Wii gameplay also treats D-pad directions as Map/Items shortcuts. The
     // physical D-pad belongs to our item slots. Wheel and both map screens
     // also suppress the legacy D-pad open/close shortcuts.
-    if((dMeter2Info_getWindowStatus()==0||ring||dMeter2Info_getWindowStatus()==4||dMeter2Info_getWindowStatus()==5)&&!ui_visible()){
+    if((window==0||ring||map)&&!ui){
         constexpr u32 directions=PAD_BUTTON_LEFT|PAD_BUTTON_RIGHT|PAD_BUTTON_UP|PAD_BUTTON_DOWN;
         input.mButtonFlags&=~directions;
         input.mPressedButtonFlags&=~directions;
+        // Native maps close through this input, not the gameplay map action.
+        // In the Advanced UI Map tab the bumpers remain tab navigation.
+        if(map&&!s_mapFromCollection&&s_mapMenu.pressed)input.mPressedButtonFlags|=PAD_BUTTON_LEFT;
     }
     // The Wii item wheel is opened by native Up. Feed that consumer from the
     // physical RB alone, including while the wheel is open and RB is held.
@@ -776,11 +849,14 @@ ModResult initialize_kcrux_controls(ModError* error){
     if(result==MOD_OK)result=mods::hook::add_pre<RewiredMixOn>(svc_hook,ring_mix_on,&early);
     if(result==MOD_OK)result=mods::hook::add_pre<RewiredMixOff>(svc_hook,ring_mix_off,&early);
     if(result==MOD_OK)result=mods::hook::add_pre<RewiredCollectionAssign>(svc_hook,assign_from_collection,&early);
+    if(result==MOD_OK)result=mods::hook::add_pre<RewiredCollectionCursorInput>(svc_hook,before_collection_cursor_input,&early);
+    if(result==MOD_OK)result=mods::hook::add_post<RewiredCollectionCursorInput>(svc_hook,after_collection_cursor_input,&late);
+    if(result==MOD_OK)result=mods::hook::add_post<RewiredCollectionRawButton>(svc_hook,after_collection_raw_button,&late);
     if(result==MOD_OK)result=svc_save->observe_saves(mod_ctx,new_slots,load_slots,nullptr,nullptr,&s_saveObserver);
     if(result!=MOD_OK)return mods::set_error(error,result,"could not install five-slot controls");
     // Save lifecycle owns migration; title-screen data must not be saved as a real slot.
     s_loaded=false;reset_transient();
-    svc_log->info(mod_ctx,"Rewired controls revision 29: forward aim movement corrected; RT map warp and Zora swim controls retained");return MOD_OK;
+    svc_log->info(mod_ctx,"Rewired controls revision 30: menu trigger ownership and Essentials 3.0.2 map compatibility");return MOD_OK;
 }
 void shutdown_kcrux_controls(){
     mods::hook::uninstall<RewiredMixOn>(svc_hook);mods::hook::uninstall<RewiredMixOff>(svc_hook);
@@ -789,6 +865,9 @@ void shutdown_kcrux_controls(){
     mods::hook::uninstall<KcruxSelectIndex>(svc_hook);mods::hook::uninstall<KcruxMixIndex>(svc_hook);
     mods::hook::uninstall<KcruxPlayItem>(svc_hook);mods::hook::uninstall<KcruxRingAssign>(svc_hook);
     mods::hook::uninstall<RewiredCollectionAssign>(svc_hook);
+    mods::hook::uninstall<RewiredCollectionCursorInput>(svc_hook);
+    mods::hook::uninstall<RewiredCollectionRawButton>(svc_hook);
+    s_collectionInput.clear();
     mods::hook::uninstall<KcruxSetPlayItem>(svc_hook);
     mods::hook::uninstall<KcruxItemSetButton>(svc_hook);
     mods::hook::uninstall<KcruxNewItemChange>(svc_hook);
@@ -804,7 +883,7 @@ void shutdown_kcrux_controls(){
     if(s_saveObserver&&svc_save)svc_save->unobserve_saves(mod_ctx,s_saveObserver);
     s_saveObserver=0;s_loaded=false;s_slots={};reset_transient();s_dpad={};s_items={};s_sword={};s_cancel={};s_view={};s_object={};s_midna={};s_fire={};s_quick={};s_target={};
     s_collectionOpen=false;s_collectionPage=0;s_collectionTarget=-1;
-    s_menuLeft={};s_menuRight={};s_menuDpad={};s_menuTrigger={};
+    s_menuLeft={};s_menuRight={};s_menuDpad={};s_menuTrigger={};s_menuTabLT={};s_menuTabRT={};s_subTabLT={};s_subTabRT={};s_wheelDirect={};s_menuCombine={};
     s_button=nullptr;s_axis=nullptr;s_enabled=0;s_modeAtBoot=false;
 }
 }

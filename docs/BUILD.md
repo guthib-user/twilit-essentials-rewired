@@ -58,6 +58,21 @@ a different runtime. Do not create a new player save just to satisfy a fixture.
 The user prefers to perform manual mission playtests. Existing working mechanics
 do not need new video tests unless the user requests them or needs remote review.
 
+For the modern menu test, use the official Essentials 3.0.2 package in the
+disposable profile and a copied ordinary save. On Linux, use X11 directly if
+the nested Gamescope test displays a Vulkan device-loss error:
+
+```sh
+SDL_VIDEODRIVER=x11 REWIRED_TEST_RUNTIME="$PWD/build/rewired-runtime-v2.0.3/AppRun" \
+  python3 tools/run_rewired_candidate.py --full-graphics --load-save 1 \
+  --stage F_SP103,0,0,0 --cvar game.canTransformAnywhere=true
+python3 tools/check_menu_bindings.py build/menu-checks.json
+python3 tools/playcheck_rewired.py quit
+```
+
+The test sets a portal-eligibility fixture flag in RAM of the disposable game
+and edits its test assignments. Do not use its package on the player's profile.
+
 The driver can expose title-screen actors before a save is ready. Confirm the
 real stage, player and stable procedure before applying fixture grants.
 

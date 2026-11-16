@@ -13,7 +13,13 @@
 | LB tap / hold | Full map / minimap toggle |
 | RB | Items |
 | L3 / R3 | Midna / first person |
-| RT in the full map | Native Warp selection, subject to game eligibility; Y keeps Essentials' map marking |
+| RT in the full map | Portals / return to the world map, subject to game eligibility |
+| Y / X in the full map | Mark / marker style |
+| LB in a standalone map | Close the map |
+| LB / RB in the pause UI | Previous / next outer tab, including its Map tab |
+| LT / RT in Collection | Previous / next section in its inner row |
+| LT / RT in other pause tabs | Previous / next where available; RT is reserved for the fifth slot in Items and for portals on the world map |
+| LT in the item wheel | Hold for native direct select; the swap-direct-select setting still applies |
 | Left / right stick while aiming on foot | Move / aim; configurable under Rewired |
 | Left-stick up/down during Zora underwater swimming | Reversed; configurable under Rewired, compatible with Better Swimming |
 

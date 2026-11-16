@@ -1,8 +1,10 @@
 # Twilit Essentials menu integration boundary
 
 These notes describe the adapter through revision 25. [Current status](STATUS.md)
-records the installed revision and open work. Historical stamina masking below
-was superseded in revision 24.
+records the installed revision and open work. The
+[3.0.2 integration review and playtest plan](upstream-3.0.2-and-playtest.md)
+covers the new user interface, versioned official API examples and current
+fork options. Historical stamina masking below was superseded in revision 24.
 
 The isolated candidate uses the official Twilit Essentials 3.0.1 package
 (`17b40c012ad5a598a9aeaa24345c7708a96f8828c1052491b1518e6e83f654f3`).

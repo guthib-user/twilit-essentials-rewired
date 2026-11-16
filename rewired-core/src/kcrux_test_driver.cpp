@@ -22,6 +22,9 @@
 #include "JSystem/J2DGraph/J2DScreen.h"
 #include "d/d_menu_ring.h"
 #include "d/d_menu_collect.h"
+#include "d/d_menu_window.h"
+#include "d/d_menu_fmap.h"
+#include "d/d_menu_fmap2D.h"
 #include "f_op/f_op_actor_iter.h"
 #include "f_op/f_op_actor_mng.h"
 #include "f_pc/f_pc_layer.h"
@@ -98,7 +101,7 @@ void trace_firstbit(ModContext*,void* args,void* result,void*){
     out<<"FIRSTBIT "<<unsigned(mods::arg<u8>(args,1))<<" = "<<*static_cast<int*>(result)<<'\n';
 }
 HookAction trace_menu_text(ModContext*,void* args,void*,void*){
-    if(!s_traceFrame||s_traceFrame+2<s_frame||dMeter2Info_getWindowStatus()!=3)return HOOK_CONTINUE;
+    if(!s_traceFrame||s_traceFrame+2<s_frame||dMeter2Info_getWindowStatus()<3)return HOOK_CONTINUE;
     std::ofstream out(s_dir/"picture-draws.txt",std::ios::app);
     out<<"TEXT "<<mods::arg<f32>(args,1)<<','<<mods::arg<f32>(args,2)<<','<<mods::arg<f32>(args,3)<<','<<mods::arg<f32>(args,4)<<' '<<mods::arg<const char*>(args,5)<<'\n';
     return HOOK_CONTINUE;
@@ -331,6 +334,16 @@ void update_kcrux_test_driver() {
     if(grant && grant!=s_grant && link && !link->checkEventRun()) {
         s_grant=grant;
         if(grant>=7&&grant<=11){s_visualContext=grant==11?0:grant;return;}
+        if(grant==26||grant==27){
+            // Isolated fixture: unlock portal view for in-map input tests.
+            dComIfGs_onEventBit(dSv_event_flag_c::saveBitLabels[54]);
+            if(grant==27){
+                // Simulated post-Master Sword state, never used on player saves.
+                dComIfGs_onEventBit(0x0D04);
+                link->onNoResetFlg0(daPy_py_c::FLG0_MIDNA_RIDE);
+            }
+            return;
+        }
         if(grant==12){std::ofstream out(s_dir/"actors.csv");fopAcIt_Executor(dump_actor,&out);return;}
         if(grant==16){
             std::filesystem::create_directories(s_dir/"native-hud");auto* archive=dComIfGp_getMain2DArchive();
@@ -514,7 +527,7 @@ void update_kcrux_test_driver() {
         out<<",\"rodActor\":"<<(rodActor?"true":"false")
            <<",\"rodY\":"<<(rodActor?rodActor->getRodStickY():0.f)
            <<",\"rodAction\":"<<(rodActor?rodActor->action:-1);
-        if(link) out<<",\"wolf\":"<<(link->checkWolf()?"true":"false")<<",\"senses\":"<<(link->checkWolfEyeUp()?"true":"false")
+        if(link) out<<",\"field\":"<<link->checkField()<<",\"midnaRiding\":"<<bool(link->checkMidnaRide())<<",\"wolf\":"<<(link->checkWolf()?"true":"false")<<",\"senses\":"<<(link->checkWolfEyeUp()?"true":"false")
                     <<",\"proc\":"<<unsigned(link->mProcID)<<",\"item\":"<<unsigned(link->mEquipItem)<<",\"slot\":"<<unsigned(link->mSelectItemId)
                     <<",\"event\":"<<(link->checkEventRun()?"true":"false")<<",\"y\":"<<link->current.pos.y
                     <<",\"x\":"<<link->current.pos.x<<",\"z\":"<<link->current.pos.z
@@ -540,6 +553,16 @@ void update_kcrux_test_driver() {
                     <<",\"inventoryBait\":"<<unsigned(dComIfGs_getItem(11,false))
                     <<",\"baitCount\":"<<unsigned(dComIfGs_getBottleNum(0))
                     <<",\"arrows\":"<<unsigned(dComIfGs_getArrowNum())<<",\"seeds\":"<<unsigned(dComIfGs_getPachinkoNum());
+        if(auto* menu=dMeter2Info_getMenuWindowClass()){
+            out<<",\"menuProc\":"<<unsigned(menu->mMenuProc);
+            if(auto* map=menu->mpMenuFmap){
+                out<<",\"worldMapProc\":"<<unsigned(map->mProcess)<<",\"portalView\":"<<map->mIsWarpMap;
+                if(auto* top=map->mpDraw2DTop)
+                    out<<",\"warpAvailable\":"<<top->isWarpAccept()<<",\"canWarp\":"<<top->checkPlayerWarpAccept();
+            }
+        }
+        out<<",\"warpStatus\":"<<unsigned(dMeter2Info_getWarpStatus())
+           <<",\"nativeLockR\":"<<mDoCPd_c::getHoldLockR(PAD_1);
         out<<",\"ringSlot\":"<<s_ringSlot<<",\"ringInventory\":"<<s_ringInventory<<",\"ringStatus\":"<<s_ringStatus;
         if(link)if(auto* meter=dMeter2Info_getMeterClass())if(auto* map=meter->mpMap)
             out<<",\"mapInside\":"<<unsigned(map->mMapIsInside)<<",\"mapAlpha\":"<<unsigned(map->mMapAlpha)

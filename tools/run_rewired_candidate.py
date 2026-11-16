@@ -1,5 +1,13 @@
 from pathlib import Path
-import os, shutil, subprocess, time, json, sys
+import argparse, os, shutil, subprocess, time, json
+parser=argparse.ArgumentParser(description='Launch the disposable Rewired integration profile')
+parser.add_argument('--headless',action='store_true')
+parser.add_argument('--full-graphics',action='store_true')
+parser.add_argument('--legacy',action='store_true')
+parser.add_argument('--load-save',type=int,choices=range(1,4))
+parser.add_argument('--stage')
+parser.add_argument('--cvar',action='append',default=[])
+args=parser.parse_args()
 root=Path(__file__).resolve().parents[1]
 profile=root/'test-profile-rewired'
 def existing_candidate():
@@ -18,7 +26,7 @@ package=root/'build/rewired-test/mods/twilit_rewired_controls.dusk'
 shutil.copy2(package,profile/'mods/twilit_rewired_controls.dusk')
 config_path=profile/'config.json'
 config=json.loads(config_path.read_text())
-modern='--legacy' not in sys.argv
+modern=not args.legacy
 config['mod.local_twilit__rewired_controls.enabled']=True
 config['mod.local_twilit__rewired_controls.modern-controls']=modern
 config['mod.local_twilit__rewired_hud.enabled']=True
@@ -33,8 +41,11 @@ for p in profile.glob('capture-*.ppm'):p.unlink()
 log=(root/'build/rewired-integration.log').open('w')
 runtime=os.environ.get('REWIRED_TEST_RUNTIME',str(Path.home()/'Applications/Dusklight/Dusklight-v2.0.3-linux-x86_64.AppImage'))
 command=[runtime,'--user-dir',str(profile),'--backend','vulkan','--log-level','info',str(Path.home()/'Applications/Dusklight/Game data/Twilight Princess - Wii USA Rev 2.rvz')]
-if '--headless' in sys.argv:
-    width,height=('1920','1080') if '--full-graphics' in sys.argv else ('1280','720')
+if args.load_save:command+=['--load-save',str(args.load_save)]
+if args.stage:command+=['--stage',args.stage]
+for cvar in args.cvar:command+=['--cvar',cvar]
+if args.headless:
+    width,height=('1920','1080') if args.full_graphics else ('1280','720')
     command=['gamescope','--backend','headless','-w',width,'-h',height,'-W',width,'-H',height,'-r','60','--','env','SDL_VIDEODRIVER=x11']+command
 p=subprocess.Popen(command,env=dict(os.environ,KCRUX_TEST_DIR=str(profile)),stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
 (root/'build/rewired-test-pid.txt').write_text(str(p.pid))

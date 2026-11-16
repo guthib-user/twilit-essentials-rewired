@@ -1,20 +1,47 @@
 # Current status
 
-Updated 2026-11-05. Revision **29** is staged for the next full launch of Rewired
-Playtest: core **0.1.8**, unchanged HUD **0.1.4**, slot service **1.4**. Revision
-**27** is currently installed. The launcher validates
-the staged packages and retains a rollback copy before installation. Normal TP
-Custom, the shared AppImage, player saves and unrelated settings are unchanged.
+Updated 2026-11-16. Revision **30** is staged for the next full launch of
+Rewired Playtest: core **0.1.9**, HUD **0.1.5**, slot service **1.4**. The
+launcher validates packages and keeps the prior revision for rollback. The
+player already has official Essentials **3.0.2** installed. Normal TP Custom,
+the shared AppImage, and player saves were untouched.
 
 ## Current behavior
 
 Five canonical saved slots: D-pad Left, Right, Up, Down, RT. Menus and HUD share
 that registry, including combinations and ammo. Modern mode is optional and
 switches on restart. Dawnlight is disabled in this instance; Twilit Essentials
-3.0.1 remains enabled. Its Items page is adapted through scoped hooks/overlay;
+3.0.2 remains enabled. Its Items page is adapted through scoped hooks/overlay;
 a full native Items/Settings extension is still unavailable in that package.
 
 ## Last release and verification
+
+Revision 30 audits the Essentials 3.0.2 Advanced UI. RT opens and closes
+the native portal view, preserving Y markers, X marker style and the warp
+progression checks. An eligible isolated save reached portal view; a
+restricted save reached the expected refusal. A full trip on a natural
+story save still needs playtest. LB closes a standalone world or dungeon map;
+in the pause Map tab the bumpers keep their tab role. The world map shows the
+RT portal badge, including its native disabled tint, and the LB Back badge.
+
+Pause bumpers navigate the outer tabs. LT/RT navigate Collection's six inner
+sections, with updated labels. Elsewhere the triggers navigate tabs as
+available; RT is reserved for slot five in Items, slot five in the wheel
+and warp in the world map. The wheel also accepts LT for direct select.
+Held-input tracking across transitions prevents an RT tab change from
+assigning an item or firing immediately on exit. The inventory overlay no
+longer badges cells with no resolved item, and gameplay portrait/glow masks
+stay off unrelated menu pages. All five slot assignments passed in both
+Items and the wheel. The optional Advanced Item Wheel also passed open, LT direct
+select input, RT assignment and close. Legacy pause and the native Map tab
+worked with Rewired's RT bridge disabled. Focused controller scenarios passed
+in full graphics with Compass. Lakebed's standalone map opened, accepted floor movement and
+closed via LB without trigger/D-pad misfires. Its current pause tab bar did
+not offer Map in that save/context, so that variant remains open.
+
+See [upstream findings and playtest plan](upstream-3.0.2-and-playtest.md) for
+public service examples, the available versions, and the remaining
+progression, graphics and input checks.
 
 Revision 29 fixes the forward-only aiming walk slowdown. Native next-action
 handling supplies an attention movement limit, but the forward branch uses
@@ -105,6 +132,8 @@ These are ignored local files; they are not required for ordinary code work:
 - `build/revision27-staged.json`: candidate hashes and pending update location.
 - `build/revision28-staged.json`: corrected RT map Warp candidate hashes.
 - `build/revision29-staged.json`: forward aiming fix and cumulative candidate hashes.
+- `build/revision30/menu-checks-final.json`: 35 focused controller checks.
+- `build/revision30-staged.json`: production package hashes and staging record.
 - `build/revision29-aim-speed-baseline.json`, `revision29-aim-speed-patched.json`,
   `revision29-aim-speed-verification.json`: focused live aiming speed checks.
 - `build/revision27-aim-movement.json`: simultaneous Bow movement/aim result.

@@ -15,6 +15,9 @@
 #include "d/d_meter_HIO.h"
 #include "d/d_menu_ring.h"
 #include "d/d_menu_collect.h"
+#include "d/d_menu_window.h"
+#include "d/d_menu_fmap.h"
+#include "d/d_menu_fmap2D.h"
 #include "d/d_meter_map.h"
 #include "d/d_pane_class.h"
 #include "d/d_select_cursor.h"
@@ -578,11 +581,22 @@ void hide_pickup_helper(dMeterButton_c* helper,u32 mask){
     for(int i=0;i<2;++i)if(helper->field_0x4be[i]<32&&(mask&(1u<<helper->field_0x4be[i]))&&helper->mpText[i])
         hide(helper->mpText[i]->getPanePtr());
 }
+CPaneMgr* field_map_back_pane(J2DScreen* screen){
+    if(!kcrux_controls_enabled()||dMeter2Info_getWindowStatus()!=4)return nullptr;
+    auto* menu=dMeter2Info_getMenuWindowClass();
+    auto* map=menu?menu->mpMenuFmap:nullptr;
+    auto* top=map?map->mpDraw2DTop:nullptr;
+    return top&&top->mpTitleScreen==screen?top->mpDpad:nullptr;
+}
 HookAction before_screen(ModContext*,void* args,void*,void*){
     auto* screen=mods::arg<J2DScreen*>(args,0);
     // Essentials' optional third-slot bridge can draw its cross cluster from
     // a separate screen before the standard meter draw hook runs.
-    if(screen&&kcrux_controls_enabled())hide(screen->search(MULTI_CHAR('juji_n')));
+    const int window=dMeter2Info_getWindowStatus();
+    if(screen&&kcrux_controls_enabled()&&(window==0||window==2))
+        hide(screen->search(MULTI_CHAR('juji_n')));
+    if(auto* back=field_map_back_pane(screen);back&&back->isVisible()&&ensure_resources())
+        hide(back->getPanePtr());
     // Hide only redundant central callouts for remapped object/wolf actions. Their update/draw logic
     // still runs, preserving every native animation timer and sound cue.
     if(s_contextHelper&&(screen==s_contextHelper->mpButtonScreen||screen==s_contextHelper->field_0x00c))
@@ -606,6 +620,14 @@ void draw_collection_overlay();
 void after_screen(ModContext*,void* args,void*,void*){
     restore_hidden();
     auto* screen=mods::arg<J2DScreen*>(args,0);
+    if(auto* back=field_map_back_pane(screen);back&&back->isVisible()&&back->getAlpha()&&s_text){
+        auto* icon=screen->search(MULTI_CHAR('juy_sha0'));
+        const auto center=back->getGlobalVtxCenter(icon?icon:back->getPanePtr(),false,0);
+        HeapScope scope(s_guiHeap);
+        CustomDrawScope draw;
+        shape(Shoulder,center.x,center.y,24.f,back->getAlpha());
+        text("LB",center.x,center.y,8.f,back->getAlpha());
+    }
     if(s_hud&&screen==s_hud->getMainScreenPtr())draw_collection_overlay();
 }
 HookAction before_hud(ModContext*,void* args,void*,void*){
@@ -755,7 +777,9 @@ void draw_collection_overlay(){
     for(int index=0;index<20;++index){
         int owner=svc_kcrux_controls->owner_of_inventory(inventoryOrder[index]);
         if(index==8&&owner<0)owner=svc_kcrux_controls->owner_of_inventory(9);
-        if(owner>=0&&owner<5)badge(owner,s_menuCells[index].x+7,s_menuCells[index].y+7,12.f,255);
+        if(owner>=0&&owner<5&&kcrux_slot_view(owner).item!=dItemNo_NONE_e&&
+           kcrux_slot_view(owner).item!=0)
+            badge(owner,s_menuCells[index].x+7,s_menuCells[index].y+7,12.f,255);
     }
     const int combo=svc_kcrux_controls->combination_state(s_collectionSelection);
     if(combo){
@@ -798,16 +822,33 @@ HookAction before_menu_glyph(ModContext*,void* args,void*,void*){
 HookAction observe_menu_text(ModContext*,void* args,void*,void*){
     if(!kcrux_controls_enabled()||dMeter2Info_getWindowStatus()!=3)return HOOK_CONTINUE;
     const char* label=mods::arg<const char*>(args,5);if(!label)return HOOK_CONTINUE;
+    const int page=kcrux_collection_page();
+    const float baseline=mods::arg<f32>(args,2);
+    if(!s_renderingCustom&&(page==2||page==3)&&baseline>81&&baseline<91&&
+       mods::arg<f32>(args,4)>11&&mods::arg<f32>(args,4)<14&&!std::strcmp(label,"L")){
+        // Essentials renders a one-letter fallback on the Collection row.
+        // Preserve its stroke passes and tint while fitting the two-letter label.
+        mods::arg_ref<const char*>(args,5)="LT";mods::arg_ref<u32>(args,6)=2;
+        mods::arg_ref<f32>(args,1)-=2.f;mods::arg_ref<f32>(args,3)*=.74f;
+        return HOOK_CONTINUE;
+    }
     auto* port=dComIfGp_getCurrentGrafPort();if(!port)return HOOK_CONTINUE;
     auto bounds=port->getGrafType()==1?*static_cast<J2DOrthoGraph*>(port)->getOrtho():*port->getBounds();
     if(mods::arg<f32>(args,1)>bounds.i.x+40||mods::arg<f32>(args,2)>65||mods::arg<f32>(args,4)<20)return HOOK_CONTINUE;
-    int page=-1;
-    if(!std::strcmp(label,"Items"))page=1;
-    else if(!std::strcmp(label,"Equipment"))page=0;
-    else if(!std::strcmp(label,"Collection"))page=2;
-    else if(!std::strcmp(label,"Expansions"))page=3;
-    else if(!std::strcmp(label,"Settings"))page=4;
-    if(page>=0)svc_kcrux_controls->report_collection_page(page);
+    // The Advanced UI reports its page title in the selected language.
+    // Match the large page header, never the smaller adjacent tab labels.
+    constexpr const char* headings[][5]={
+        {"Equipment","Items","Collection","Expansions","Settings"},
+        {"Ausrüstung","Items","Sammlung","Erweiterungen","Einstellungen"},
+        {"Equipo","Objetos","Colección","Mejoras","Ajustes"},
+        {"Équipement","Objets","Collection","Améliorations","Options"},
+        {"Equipaggiamento","Oggetti","Collezione","Potenziamenti","Impostazioni"},
+    };
+    for(const auto& language:headings)for(int page=0;page<5;++page)
+        if(!std::strcmp(label,language[page])){
+            svc_kcrux_controls->report_collection_page(page);
+            return HOOK_CONTINUE;
+        }
     return HOOK_CONTINUE;
 }
 HookAction before_map_draw(ModContext*,void* args,void*,void*){
@@ -824,6 +865,8 @@ void after_map_draw(ModContext*,void*,void*,void*){
 }
 HookAction before_picture_self(ModContext*,void* args,void*,void*){
     if(!kcrux_controls_enabled()||s_renderingCustom)return HOOK_CONTINUE;
+    const int window=dMeter2Info_getWindowStatus();
+    if(window!=0&&window!=2)return HOOK_CONTINUE;
     auto* picture=mods::arg<J2DPicture*>(args,0);
     if(picture&&picture->mInfoTag==MULTI_CHAR('j_light1'))return HOOK_SKIP_ORIGINAL;
     const auto* texture=picture?picture->getTexture(0):nullptr;
@@ -831,19 +874,50 @@ HookAction before_picture_self(ModContext*,void* args,void*,void*){
     for(const auto* legacy:s_legacyZTextures)if(legacy&&image==legacy)return HOOK_SKIP_ORIGINAL;
     return HOOK_CONTINUE;
 }
+// Essentials 3.0.2 draws its map and tab prompts as detached pictures
+// with no pane IDs. Identify the exact glyph textures by pixel
+// signature, scoped to the expected menu row. This keeps its localized
+// labels, positioning and alpha, and ignores unknown replacements.
+const char* rewired_menu_badge(const ResTIMG* image,int window,float y,float w,float h){
+    if(!image||image->width!=24||image->height!=24||image->imageOffset!=32||
+       w<13.f||w>24.f||std::abs(w-h)>.1f)return nullptr;
+    const bool map=(window==4)&&y>401&&image->format==GX_TF_IA4;
+    const bool tabs=(window==3||window==4||window==5)&&y>12&&y<26&&image->format==GX_TF_C4;
+    const int page=window==3?kcrux_collection_page():-1;
+    const bool subtabs=(page==2||page==3)&&y>68&&y<80&&image->format==GX_TF_IA4;
+    if(!map&&!tabs&&!subtabs)return nullptr;
+    const auto* pixels=reinterpret_cast<const u8*>(image)+image->imageOffset;
+    u32 hash=2166136261u;
+    for(int i=0;i<(tabs?288:576);++i)hash=(hash^pixels[i])*16777619u;
+    if((map||subtabs)&&hash==0x0f348529u)return "RT";
+    if(tabs&&hash==0xaee6bfd8u)return "LB";
+    if(tabs&&hash==0x7a4adb4cu)return "RB";
+    return nullptr;
+}
 HookAction before_picture_draw(ModContext*,void* args,void*,void*){
     if(!kcrux_controls_enabled())return HOOK_CONTINUE;
     if(legacy_footer(mods::arg<f32>(args,1),mods::arg<f32>(args,2)))return HOOK_SKIP_ORIGINAL;
     auto* picture=mods::arg<J2DPicture*>(args,0);
+    const int window=dMeter2Info_getWindowStatus();
     if(picture&&!s_renderingCustom){
-        if(picture->mInfoTag==MULTI_CHAR('j_light1'))return HOOK_SKIP_ORIGINAL;
         const auto* texture=picture->getTexture(0);const auto* image=texture?texture->getTexInfo():nullptr;
-        for(const auto* legacy:s_legacyZTextures)if(legacy&&image==legacy)return HOOK_SKIP_ORIGINAL;
+        const float x=mods::arg<f32>(args,1),y=mods::arg<f32>(args,2);
+        const float w=mods::arg<f32>(args,3),h=mods::arg<f32>(args,4);
+        if(const char* label=rewired_menu_badge(image,window,y,w,h);label&&ensure_resources()){
+            HeapScope scope(s_guiHeap);
+            CustomDrawScope draw;
+            shape(Shoulder,x+w*.5f,y+h*.5f,w*1.55f,picture->getAlpha());
+            text(label,x+w*.5f,y+h*.5f,w*.54f,picture->getAlpha());
+            return HOOK_SKIP_ORIGINAL;
+        }
+        if(window==0||window==2){
+            if(picture->mInfoTag==MULTI_CHAR('j_light1'))return HOOK_SKIP_ORIGINAL;
+            for(const auto* legacy:s_legacyZTextures)if(legacy&&image==legacy)return HOOK_SKIP_ORIGINAL;
+        }
         if(s_hud){
             for(int i=0;i<2;++i)for(int j=0;j<3;++j)
                 if(picture==s_hud->mpItemNumTex[i][j])return HOOK_SKIP_ORIGINAL;
             auto* port=dComIfGp_getCurrentGrafPort();
-            const int window=dMeter2Info_getWindowStatus();
             if(image&&port&&(window==0||window==2)){
                 const auto bounds=port->getGrafType()==1?*static_cast<J2DOrthoGraph*>(port)->getOrtho():*port->getBounds();
                 // Essentials' extra-channel counters are detached pictures. The
@@ -876,7 +950,7 @@ HookAction before_picture_draw(ModContext*,void* args,void*,void*){
     }
     // Essentials explicitly draws these native portrait panes outside their
     // original parent. Visibility on that parent cannot suppress the duplicate.
-    if(picture&&(picture->mInfoTag==MULTI_CHAR('midona')||picture->mInfoTag==MULTI_CHAR('midona_s')))
+    if((window==0||window==2)&&picture&&(picture->mInfoTag==MULTI_CHAR('midona')||picture->mInfoTag==MULTI_CHAR('midona_s')))
         return HOOK_SKIP_ORIGINAL;
     if(!s_mapDrawing||picture!=s_mapDrawing->mMapJ2DPicture)return HOOK_CONTINUE;
     auto* port=dComIfGp_getCurrentGrafPort();if(!port)return HOOK_CONTINUE;

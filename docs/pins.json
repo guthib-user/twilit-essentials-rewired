@@ -1,13 +1,13 @@
 {
   "release": {
-    "revision": 29,
-    "state": "staged; revision 27 remains installed until next launcher start",
-    "core": "0.1.8",
-    "hud": "0.1.4",
+    "revision": 30,
+    "state": "staged; revision 29 remains installed until next launcher start",
+    "core": "0.1.9",
+    "hud": "0.1.5",
     "slot_service": "1.4",
     "packages_sha256": {
-      "twilit_rewired_controls.dusk": "4d5603b48c9302f111b9d4a2aa851cf907c150a04bbb5771da957a85e81a8214",
-      "twilit_rewired_hud.dusk": "3b978305b557d2c4625e23defaab332006900c48dbba23661d17664e13d323e7"
+      "twilit_rewired_controls.dusk": "82ee14b1e0c7157d34c6954f6a280d56e1c125f407578d8f286a79661940cad1",
+      "twilit_rewired_hud.dusk": "529791f837fdfb4064326d0301f7efe8b40d36e8243dadb46825d5b59a62aad9"
     }
   },
   "dusklight": {
@@ -27,9 +27,11 @@
     }
   },
   "twilit_essentials": {
-    "version": "3.0.1",
-    "package_sha256": "17b40c012ad5a598a9aeaa24345c7708a96f8828c1052491b1518e6e83f654f3",
-    "native_collection_service": "1.0"
+    "version": "3.0.2",
+    "package_sha256": "485fc2be409a4d3e231a0523ef1fe0298c5b794e2b53dcff9946de7c04df9706",
+    "native_collection_service": "1.0",
+    "native_quick_access_service": "1.0",
+    "service_examples_commit": "03397540b4418d097daa0c4c95fa1407fde66def"
   },
   "dawnlight_history": {
     "base_commit": "b5e9046cd98bdd8593ab2cf219d72a0f61ef7213",
