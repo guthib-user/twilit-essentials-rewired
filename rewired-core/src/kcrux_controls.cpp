@@ -853,7 +853,7 @@ ModResult initialize_kcrux_controls(ModError* error){
     if(result!=MOD_OK)return mods::set_error(error,result,"could not install five-slot controls");
     // Save lifecycle owns migration; title-screen data must not be saved as a real slot.
     s_loaded=false;reset_transient();
-    svc_log->info(mod_ctx,"Rewired controls revision 31: separate pause tab inputs and native map Back");return MOD_OK;
+    svc_log->info(mod_ctx,"Rewired controls revision 32: early human map warp when enabled in Essentials");return MOD_OK;
 }
 void shutdown_kcrux_controls(){
     mods::hook::uninstall<RewiredMixOn>(svc_hook);mods::hook::uninstall<RewiredMixOff>(svc_hook);

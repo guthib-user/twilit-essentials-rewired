@@ -23,6 +23,10 @@
 | Left / right stick while aiming on foot | Move / aim; configurable under Rewired |
 | Left-stick up/down during Zora underwater swimming | Reversed; configurable under Rewired, compatible with Better Swimming |
 
+With Essentials' **Warp as human** enabled, the full map can use already
+unlocked portals before Link obtains the Shadow Crystal. Portal destinations
+and other warp restrictions follow the game's rules.
+
 Contextual actions take precedence over Y jump. RT must remain available for
 item use; do not reintroduce major native R secondary-action conflicts there.
 The five displayed slots, both inventory frontends, and native consumers must

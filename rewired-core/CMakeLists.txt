@@ -9,9 +9,10 @@ if(REWIRED_TEST_DRIVER)
 endif()
 add_mod(twilit_rewired_controls
     FEATURES ${rewired_features}
-    SOURCES src/mod.cpp src/kcrux_controls.cpp src/manual_jump.cpp src/core_service.cpp src/settings_ui.cpp src/crash_compat.cpp src/aim_movement.cpp src/swim_controls.cpp
+    SOURCES src/mod.cpp src/kcrux_controls.cpp src/manual_jump.cpp src/core_service.cpp src/settings_ui.cpp src/crash_compat.cpp src/aim_movement.cpp src/swim_controls.cpp src/map_warp.cpp
     MOD_JSON mod.json)
 target_include_directories(twilit_rewired_controls PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(twilit_rewired_controls PRIVATE "${DUSKLIGHT_DIR}/src")
 if(REWIRED_TEST_DRIVER)
     target_sources(twilit_rewired_controls PRIVATE src/kcrux_test_driver.cpp)
     target_compile_definitions(twilit_rewired_controls PRIVATE KCRUX_TEST_DRIVER=1)

@@ -1,7 +1,7 @@
 # Current status
 
-Updated 2026-11-17. Revision **31** is staged for the next Rewired Playtest
-launch with core **0.1.10**, HUD **0.1.6**, slot service **1.4**, and official
+Updated 2026-11-17. Revision **32** is staged for the next Rewired Playtest
+launch with core **0.1.11**, HUD **0.1.6**, slot service **1.4**, and official
 Essentials **3.0.2**. The launcher validates both packages and backs up the
 previous revision.
 
@@ -21,6 +21,13 @@ switches on restart. Dawnlight is disabled in this instance; Twilit Essentials
 a full native Items/Settings extension is still unavailable in that package.
 
 ## Last release and verification
+
+Revision 32 honors Essentials' **Warp as human** setting for already unlocked
+world-map portals before Link obtains the Shadow Crystal. Only the world-map
+eligibility query reads that requirement as met, with the remaining eligibility
+and destination checks handled by the game. Using a copy of the player's save,
+RT opened Portals and Link traveled from Hyrule Field to Castle Town as a human.
+Turning the option off restored the original refusal on the same copied save.
 
 Revision 31 keeps outer tab navigation on LB/RB and Collection sections on
 LT/RT. Matching trigger badges render at both tested aspect ratios. The
