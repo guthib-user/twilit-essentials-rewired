@@ -38,9 +38,9 @@
     "required_enabled": false
   },
   "visual_presets": {
-    "version": "0.1.0",
+    "version": "0.1.1",
     "state": "staged for next Rewired Playtest launch",
-    "package_sha256": "8fe9a62cc6e1c66abc320c353df75e3b9998bfd835dc9c3107b8285bc62b05c5",
+    "package_sha256": "69df1839d748b07906d5db4f371f827afd2ae06456111eefd17e9389cd02e77f",
     "default_preset": "Current (original)",
     "count": 5
   }

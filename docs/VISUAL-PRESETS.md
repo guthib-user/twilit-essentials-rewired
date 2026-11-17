@@ -46,6 +46,12 @@ at night and in daylight; the initial distant-depth striping was corrected.
 These are rendering checks, not a new mission playtest or a frame-rate benchmark.
 Player visual preference and additional areas remain normal playtesting.
 
+Version 0.1.1 fixes the Mods panel's unsupported selector by using a dropdown.
+The panel itself, all five selections, strength adjustment and comparison toggle
+were exercised through the live host UI and verified against saved settings.
+Do not use `UI_CONTROL_SELECT` in this panel: it requires a help pane available
+only in tabbed mod windows. Shader-only checks cannot validate this UI contract.
+
 The launcher accepts the optional visuals package alongside the required
 production core/HUD packages. SHA checks, running-profile rejection, test-driver
 rejection, backups and rollback remain enforced. Tests run with:

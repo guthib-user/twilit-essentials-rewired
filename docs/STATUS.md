@@ -1,8 +1,8 @@
 # Current status
 
-Updated 2026-11-17. Installed gameplay revision **32** uses core **0.1.11**,
+Updated 2026-11-18. Installed gameplay revision **32** uses core **0.1.11**,
 HUD **0.1.6**, slot service **1.4**, and official Essentials **3.0.2**.
-Optional **Rewired Visual Presets 0.1.0** is staged for the next Rewired Playtest
+Optional **Rewired Visual Presets 0.1.1** is staged for the next Rewired Playtest
 launch, alongside the unchanged, verified production core/HUD packages. The
 launcher validates and backs up the packages before installing them.
 
@@ -12,6 +12,15 @@ Current defaults to a true bypass. The new module preserves existing bloom and
 dynamic-shadow settings and adds no glow/blur. All five styles and original-look
 comparison rendered in the isolated full-graphics profile; the player's running
 game was not restarted. Seven transactional-update safety checks pass.
+
+Visual Presets 0.1.1 fixes the reported **mod UI panel build failed** error.
+The 0.1.0 preset selector used `UI_CONTROL_SELECT`, which the host rejects in a
+Mods panel without a help pane. It now uses the supported dropdown. The original
+rendering checks did not exercise that panel. This fix was verified by opening
+F1 → Mods → Rewired Visual Presets in the isolated running game, selecting all
+five presets, changing strength and toggling original comparison through the
+actual menu, with the saved configuration checked after each change. No shader,
+bloom, gameplay or controller behavior changed in this fix.
 
 Two player launches reached title initialization before Vulkan reported device
 loss. The system log records an RX 9070 XT reset in both cases. Rewired Playtest

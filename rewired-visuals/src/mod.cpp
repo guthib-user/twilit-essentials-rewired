@@ -105,13 +105,16 @@ void before_hud(ModContext*, const GfxStageContext*, void*) {
 }
 
 ModResult build_ui(ModContext* ctx, UiElementHandle pane, void*, ModError*) {
-    svc_ui->pane_add_section(ctx,pane,"Visual style");
+    auto result=svc_ui->pane_add_section(ctx,pane,"Visual style");
+    if(result!=MOD_OK)return result;
     UiControlDesc select=UI_CONTROL_DESC_INIT;
-    select.kind=UI_CONTROL_SELECT;select.label="Preset";
+    // SELECT requires a tabbed mod window's help pane. The Mods sidebar has
+    // no help pane, so it must use the self-contained dropdown control.
+    select.kind=UI_CONTROL_DROPDOWN;select.label="Preset";
     select.help_rml="Switches immediately. Current bypasses all added processing. Each style preserves your existing bloom, dynamic shadows and textures. DrawnShade adapts Comic's outlines; the other styles adapt Twilight Princess community color presets.";
     select.binding=UI_BINDING_CONFIG_VAR;select.config_var=styleVar;
     select.options=Names;select.option_count=std::size(Names);
-    auto result=svc_ui->pane_add_control(ctx,pane,&select,nullptr);
+    result=svc_ui->pane_add_control(ctx,pane,&select,nullptr);
     if(result!=MOD_OK)return result;
     UiControlDesc strength=UI_CONTROL_DESC_INIT;
     strength.kind=UI_CONTROL_NUMBER;strength.label="Style strength";

@@ -1,7 +1,7 @@
 {
   "id": "local.twilit_rewired.visuals",
   "name": "Rewired Visual Presets",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Codex; shader and preset authors credited in Sources",
   "description": "Five switchable visual styles using adapted Comic and SweetFX effects. Preserves your bloom, shadows, textures and controls."
 }
