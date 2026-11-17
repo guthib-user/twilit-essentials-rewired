@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.26)
+project(twilit_rewired_visuals CXX)
+set(DUSKLIGHT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../vendor/dusklight" CACHE PATH "Dusklight source")
+add_subdirectory("${DUSKLIGHT_DIR}/sdk" dusklight-sdk EXCLUDE_FROM_ALL)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/presets.wgsl)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/presets.wgsl" PRESET_SHADER)
+configure_file(src/shader.hpp.in shader.hpp @ONLY)
+add_mod(twilit_rewired_visuals FEATURES webgpu
+    SOURCES src/mod.cpp MOD_JSON mod.json RES_DIR res)
+target_include_directories(twilit_rewired_visuals PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")

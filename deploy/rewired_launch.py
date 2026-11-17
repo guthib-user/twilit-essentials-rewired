@@ -52,8 +52,9 @@ def apply_staged(profile: Path) -> None:
     if running(profile):
         raise RuntimeError("Save and close the running Rewired game, then open this shortcut again to apply its update.")
     expected = json.loads(manifest.read_text())
-    allowed = {"twilit_rewired_controls.dusk", "twilit_rewired_hud.dusk"}
-    if set(expected) != allowed:
+    required = {"twilit_rewired_controls.dusk", "twilit_rewired_hud.dusk"}
+    allowed = required | {"twilit_rewired_visuals.dusk"}
+    if not required <= set(expected) <= allowed:
         raise RuntimeError("The staged Rewired update has an unexpected package list")
     for name, digest in expected.items():
         package = pending / name
@@ -65,20 +66,24 @@ def apply_staged(profile: Path) -> None:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup = pending.parent / "update-backups" / stamp
     backup.mkdir(parents=True)
-    for name in allowed:
-        shutil.copy2(profile / "mods" / name, backup / name)
+    for name in expected:
+        if (profile / "mods" / name).exists():
+            shutil.copy2(profile / "mods" / name, backup / name)
         shutil.copy2(pending / name, profile / "mods" / (name + ".next"))
     replaced = []
     try:
-        for name in sorted(allowed):
+        for name in sorted(expected):
             os.replace(profile / "mods" / (name + ".next"), profile / "mods" / name)
             replaced.append(name)
     except BaseException:
         for name in replaced:
-            shutil.copy2(backup / name, profile / "mods" / name)
+            if (backup / name).exists():
+                shutil.copy2(backup / name, profile / "mods" / name)
+            else:
+                (profile / "mods" / name).unlink(missing_ok=True)
         raise
     manifest.unlink()
-    for name in allowed:
+    for name in expected:
         (pending / name).unlink()
 
 

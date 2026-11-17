@@ -30,6 +30,19 @@ cmake --build build/rewired-hud -j4
 Outputs: `build/rewired-core/mods/twilit_rewired_controls.dusk` and
 `build/rewired-hud/mods/twilit_rewired_hud.dusk`. Build only the affected component.
 
+The optional visual presets package builds separately using the same SDK and its
+prebuilt WebGPU dependency:
+
+```sh
+cmake -S rewired-visuals -B build/rewired-visuals -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build/rewired-visuals -j4
+python3 tests/test_staged_update.py
+```
+
+Output: `build/rewired-visuals/mods/twilit_rewired_visuals.dusk`. Stage it alongside
+the verified production controls/HUD packages using the launcher manifest. Do not
+use the fixture controls package. [Preset controls and sources](VISUAL-PRESETS.md).
+
 ## Quick tests, no game required
 
 ```sh

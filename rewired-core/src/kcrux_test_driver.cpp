@@ -30,6 +30,7 @@
 #include "f_pc/f_pc_layer.h"
 #include "f_pc/f_pc_name.h"
 #include "mods/svc/hook.hpp"
+#include "dusk/config_var.hpp"
 #include <atomic>
 #include <algorithm>
 #include <array>
@@ -39,6 +40,8 @@
 #include <string>
 #include <vector>
 #include <chrono>
+
+namespace dusk::config { ConfigVarBase* GetConfigVar(std::string_view name); }
 
 namespace dawnlight {
 namespace {
@@ -333,6 +336,17 @@ void update_kcrux_test_driver() {
     if(objectPressed)++s_objectPresses;
     if(grant && grant!=s_grant && link && !link->checkEventRun()) {
         s_grant=grant;
+        if(grant>=30&&grant<=36){
+            // Isolated visual-preset fixture. Never compiled into player controls.
+            if(grant<=34){
+                auto* var=dynamic_cast<dusk::config::ConfigVar<s64>*>(dusk::config::GetConfigVar("mod.local_twilit__rewired_visuals.preset"));
+                if(var)var->setValue(grant-30);
+            }else if(grant==35){
+                auto* var=dynamic_cast<dusk::config::ConfigVar<bool>*>(dusk::config::GetConfigVar("mod.local_twilit__rewired_visuals.compare-original"));
+                if(var)var->setValue(!var->getValue());
+            }else {g_env_light.daytime=180.f;dComIfGs_setTime(180.f);}
+            return;
+        }
         if(grant>=7&&grant<=11){s_visualContext=grant==11?0:grant;return;}
         if(grant==26||grant==27){
             // Isolated fixture: unlock portal view for in-map input tests.

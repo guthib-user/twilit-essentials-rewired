@@ -1,9 +1,17 @@
 # Current status
 
-Updated 2026-11-17. Revision **32** is staged for the next Rewired Playtest
-launch with core **0.1.11**, HUD **0.1.6**, slot service **1.4**, and official
-Essentials **3.0.2**. The launcher validates both packages and backs up the
-previous revision.
+Updated 2026-11-17. Installed gameplay revision **32** uses core **0.1.11**,
+HUD **0.1.6**, slot service **1.4**, and official Essentials **3.0.2**.
+Optional **Rewired Visual Presets 0.1.0** is staged for the next Rewired Playtest
+launch, alongside the unchanged, verified production core/HUD packages. The
+launcher validates and backs up the packages before installing them.
+
+Five [visual choices](VISUAL-PRESETS.md) are available through the F1 Mods menu:
+Current, DrawnShade - Cel, Enhanced Colors, Better Lighting and ChromeFX.
+Current defaults to a true bypass. The new module preserves existing bloom and
+dynamic-shadow settings and adds no glow/blur. All five styles and original-look
+comparison rendered in the isolated full-graphics profile; the player's running
+game was not restarted. Seven transactional-update safety checks pass.
 
 Two player launches reached title initialization before Vulkan reported device
 loss. The system log records an RX 9070 XT reset in both cases. Rewired Playtest

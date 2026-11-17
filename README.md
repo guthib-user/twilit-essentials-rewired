@@ -2,7 +2,7 @@
 
 An unofficial Twilit Essentials companion with five saved item slots, modern
 controller bindings, and a separate Rewired HUD. Current development targets
-Dusklight 2.0.3 and Twilit Essentials 3.0.1 on Linux x86-64.
+Dusklight 2.0.3 and Twilit Essentials 3.0.2 on Linux x86-64.
 
 Start with [current status](docs/STATUS.md). It records the installed revision,
 known issues, and what has actually been tested.
@@ -12,13 +12,15 @@ known issues, and what has actually been tested.
 | Where behavior lives and what must remain consistent | [Architecture](docs/ARCHITECTURE.md) |
 | Build, external assets, quick checks, isolated testing | [Build and testing](docs/BUILD.md) |
 | Controller mapping and visual cue policy | [Controls](docs/CONTROLS.md) |
+| Five visual styles, switching and source credits | [Visual presets](docs/VISUAL-PRESETS.md) |
 | Exact dependency and release identifiers | [Version pins](docs/pins.json) |
 | Essentials menu integration boundary | [Menu integration](docs/essentials-integration.md) |
 | Multi-item interactions and remaining progression checks | [Interaction audit](docs/interaction-audit.md) |
 | Older experiments and detailed evidence | [History](docs/history/) |
 
 `rewired-core/` owns controls and canonical assignments. `rewired-hud/` consumes
-the core service and renders the HUD. `deploy/` contains launcher and installation
+the core service and renders the HUD. Optional `rewired-visuals/` supplies native
+Comic/SweetFX adaptations without changing bloom or controls. `deploy/` contains launcher and installation
 helpers; `tools/` contains current isolated test and renderer-patch tools.
 `tests/` contains quick checks that run without the game SDK.
 
@@ -29,3 +31,4 @@ provided from the user's installed pack; its source note is included. The
 bundled ornament has its own MIT license. Dawnlight-derived portions retain
 their [CC0 notice](THIRD_PARTY/Dawnlight-CC0.txt); no blanket license is asserted
 for separately licensed assets.
+The visual module retains [Comic and SweetFX credits and licenses](rewired-visuals/res/SOURCES.md).
