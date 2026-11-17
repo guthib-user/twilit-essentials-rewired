@@ -94,11 +94,11 @@ backup when changing or rolling back this runtime.
 On Linux with Mesa, `rewired_launch.py --graphics-recovery-pci ADDRESS` selects
 one Vulkan GPU by PCI address and launches windowed through X11. See the
 [Mesa device selection documentation](https://docs.mesa3d.org/envvars.html#envvar-DRI_PRIME).
-This option is set on the Rewired Playtest shortcut for the local integrated
-GPU. To roll it back, restore the saved shortcut from the
-`update-backups/graphics-recovery-*` directory beside the launcher. Dusklight
-can drop overridden settings when it saves, so re-enable fullscreen in the
-game settings after restoring the shortcut if desired.
+The current local shortcut uses the RX 9070 XT on Wayland with
+`DISABLE_OBS_VKCAPTURE=1` and `MESA_VK_WSI_PRESENT_MODE=fifo`. Those environment
+variables apply only to Rewired Playtest. The older integrated GPU option
+remains available as a manual fallback. Shortcut backups live beside the
+launcher under `update-backups/`.
 
 Docs-only organization does not require reinstalling or launching the game.
 

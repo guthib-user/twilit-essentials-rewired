@@ -625,8 +625,8 @@ void after_screen(ModContext*,void* args,void*,void*){
         const auto center=back->getGlobalVtxCenter(icon?icon:back->getPanePtr(),false,0);
         HeapScope scope(s_guiHeap);
         CustomDrawScope draw;
-        shape(Shoulder,center.x,center.y,24.f,back->getAlpha());
-        text("LB",center.x,center.y,8.f,back->getAlpha());
+        shape(FaceB,center.x,center.y,18.f,back->getAlpha());
+        text("B",center.x,center.y,10.f,back->getAlpha());
     }
     if(s_hud&&screen==s_hud->getMainScreenPtr())draw_collection_overlay();
 }
@@ -825,16 +825,13 @@ HookAction observe_menu_text(ModContext*,void* args,void*,void*){
     const int page=kcrux_collection_page();
     const float baseline=mods::arg<f32>(args,2);
     if(!s_renderingCustom&&(page==2||page==3)&&baseline>81&&baseline<91&&
-       mods::arg<f32>(args,4)>11&&mods::arg<f32>(args,4)<14&&!std::strcmp(label,"L")){
-        // Essentials renders a one-letter fallback on the Collection row.
-        // Preserve its stroke passes and tint while fitting the two-letter label.
-        mods::arg_ref<const char*>(args,5)="LT";mods::arg_ref<u32>(args,6)=2;
-        mods::arg_ref<f32>(args,1)-=2.f;mods::arg_ref<f32>(args,3)*=.74f;
-        return HOOK_CONTINUE;
-    }
+       !std::strcmp(label,"L")&&ensure_resources())
+        return HOOK_SKIP_ORIGINAL;
     auto* port=dComIfGp_getCurrentGrafPort();if(!port)return HOOK_CONTINUE;
     auto bounds=port->getGrafType()==1?*static_cast<J2DOrthoGraph*>(port)->getOrtho():*port->getBounds();
-    if(mods::arg<f32>(args,1)>bounds.i.x+40||mods::arg<f32>(args,2)>65||mods::arg<f32>(args,4)<20)return HOOK_CONTINUE;
+    const float width=bounds.f.x-bounds.i.x;
+    const float scale=std::min(width/796.f,1.f);
+    if(mods::arg<f32>(args,1)>bounds.i.x+40||baseline>65||mods::arg<f32>(args,4)<20.f*scale)return HOOK_CONTINUE;
     // The Advanced UI reports its page title in the selected language.
     // Match the large page header, never the smaller adjacent tab labels.
     constexpr const char* headings[][5]={
@@ -880,7 +877,7 @@ HookAction before_picture_self(ModContext*,void* args,void*,void*){
 // labels, positioning and alpha, and ignores unknown replacements.
 const char* rewired_menu_badge(const ResTIMG* image,int window,float y,float w,float h){
     if(!image||image->width!=24||image->height!=24||image->imageOffset!=32||
-       w<13.f||w>24.f||std::abs(w-h)>.1f)return nullptr;
+       w<10.f||w>24.f||std::abs(w-h)>.1f)return nullptr;
     const bool map=(window==4)&&y>401&&image->format==GX_TF_IA4;
     const bool tabs=(window==3||window==4||window==5)&&y>12&&y<26&&image->format==GX_TF_C4;
     const int page=window==3?kcrux_collection_page():-1;
@@ -906,8 +903,20 @@ HookAction before_picture_draw(ModContext*,void* args,void*,void*){
         if(const char* label=rewired_menu_badge(image,window,y,w,h);label&&ensure_resources()){
             HeapScope scope(s_guiHeap);
             CustomDrawScope draw;
-            shape(Shoulder,x+w*.5f,y+h*.5f,w*1.55f,picture->getAlpha());
-            text(label,x+w*.5f,y+h*.5f,w*.54f,picture->getAlpha());
+            const float centerX=x+w*.5f,centerY=y+h*.5f;
+            const u8 alpha=picture->getAlpha();
+            shape(Shoulder,centerX,centerY,w*1.55f,alpha);
+            text(label,centerX,centerY,w*.54f,alpha);
+            if(window==3&&y>68&&y<80&&!std::strcmp(label,"RT")){
+                // Essentials has no left icon on this row. Pair it with the
+                // right icon's size, placement and fade instead of its L text.
+                if(auto* port=dComIfGp_getCurrentGrafPort()){
+                    const auto bounds=port->getGrafType()==1?*static_cast<J2DOrthoGraph*>(port)->getOrtho():*port->getBounds();
+                    const float leftX=bounds.i.x+bounds.f.x-centerX;
+                    shape(Shoulder,leftX,centerY,w*1.55f,alpha);
+                    text("LT",leftX,centerY,w*.54f,alpha);
+                }
+            }
             return HOOK_SKIP_ORIGINAL;
         }
         if(window==0||window==2){
@@ -1021,7 +1030,7 @@ ModResult initialize_kcrux_prompts(ModError* error){
     if(result==MOD_OK)result=mods::hook::add_pre<RewiredMenuText>(svc_hook,observe_menu_text,&first);
     if(result==MOD_OK)result=mods::hook::add_pre<RewiredCollectionCursor>(svc_hook,before_collection_cursor,&first);
     if(result!=MOD_OK)return mods::set_error(error,result,"could not install five-slot native HUD");
-    svc_log->info(mod_ctx,"Rewired HUD revision 25: compact wheel counts and quiet left-Y combination prompt");return MOD_OK;
+    svc_log->info(mod_ctx,"Rewired HUD revision 31: matched Collection badges and map Back");return MOD_OK;
 }
 void shutdown_kcrux_prompts(){
     mods::hook::uninstall<RewiredRingNumber>(svc_hook);mods::hook::uninstall<RewiredRingMixMessage>(svc_hook);

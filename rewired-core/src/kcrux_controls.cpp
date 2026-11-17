@@ -63,11 +63,11 @@ using AxisFn=short(*)(SDL_Gamepad*,int);
 ButtonFn s_button=nullptr;AxisFn s_axis=nullptr;
 kcrux::Slots s_slots;
 std::array<kcrux::Button,4> s_dpad;
-kcrux::Button s_items,s_mapMenu;
+kcrux::Button s_items;
 kcrux::Trigger s_mapWarp;
 kcrux::Button s_sword,s_cancel,s_view,s_object,s_midna;
 kcrux::Trigger s_fire,s_quick,s_target;
-kcrux::Trigger s_menuTrigger,s_menuTabLT,s_menuTabRT,s_subTabLT,s_subTabRT,s_wheelDirect;
+kcrux::Trigger s_menuTrigger,s_subTabLT,s_subTabRT,s_wheelDirect;
 struct CollectionInputScope{
     SDL_Gamepad* pad=nullptr;
     JUTGamePad* native=nullptr;
@@ -106,19 +106,20 @@ bool blocked();
 bool ui_visible();
 HookAction before_collection_cursor_input(ModContext*,void*,void*,void*){
     auto& scope=s_collectionInput.emplace_back();
-    if(!kcrux_controls_enabled()||!s_collectionOpen||
+    if(!kcrux_controls_enabled()||dMeter2Info_getWindowStatus()!=3||!s_collectionOpen||
        (s_collectionPage!=2&&s_collectionPage!=3)||ui_visible())return HOOK_CONTINUE;
     const int index=PADGetIndexForPort(PAD_1);
     if(index<0)return HOOK_CONTINUE;
-    // Essentials 3.0.2 reads raw LB and the pre-projection JUT Z for its
-    // Collection subpages. Keep LB projected to the outer tab, and lend
-    // only this menu update the physical LT/RT for the inner row.
+    // Essentials 3.0.2 reads raw bumpers and pre-projection JUT Z for
+    // Collection subpages. The outer row uses the projected L/R flags.
+    // Keep the bumpers out of the inner row even when native Z maps to RB.
     scope.pad=PADGetSDLGamepadForIndex(index);
-    if(scope.pad&&s_subTabRT.button.pressed){
+    if(scope.pad){
         scope.native=JUTGamePad::getGamePad(PAD_1);
         if(scope.native){
             scope.nativeTrigger=scope.native->mButton.mTrigger;
-            scope.native->mButton.mTrigger|=PAD_TRIGGER_Z;
+            scope.native->mButton.mTrigger&=~PAD_TRIGGER_Z;
+            if(s_subTabRT.button.pressed)scope.native->mButton.mTrigger|=PAD_TRIGGER_Z;
         }
     }
     return HOOK_CONTINUE;
@@ -129,9 +130,11 @@ void after_collection_cursor_input(ModContext*,void*,void*,void*){
     if(state.native)state.native->mButton.mTrigger=state.nativeTrigger;
 }
 void after_collection_raw_button(ModContext*,void* args,void* result,void*){
-    if(!s_collectionInput.empty()&&s_collectionInput.back().pad&&
-       mods::arg<SDL_Gamepad*>(args,0)==s_collectionInput.back().pad&&mods::arg<int>(args,1)==9)
-        *static_cast<bool*>(result)=s_subTabLT.button.held;
+    if(s_collectionInput.empty()||!s_collectionInput.back().pad||
+       mods::arg<SDL_Gamepad*>(args,0)!=s_collectionInput.back().pad)return;
+    const int button=mods::arg<int>(args,1);
+    if(button==9)*static_cast<bool*>(result)=s_subTabLT.button.held;
+    if(button==10)*static_cast<bool*>(result)=false;
 }
 HookAction assign_from_collection(ModContext*,void*,void*,void*){
     // The native three-channel assignment transaction must never mutate the
@@ -148,7 +151,6 @@ void sample_map_gesture(ModContext*,void*,void*,void*){
     const double stamp=std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     s_mapGesture.sample(custom&&s_button&&s_button(pad,9),!s_mapOverride||blocked(),stamp);
     s_midna.sample(custom&&s_button&&s_button(pad,7),!custom||blocked());
-    s_mapMenu.sample(custom&&s_button&&s_button(pad,9),!custom||(dMeter2Info_getWindowStatus()!=4&&dMeter2Info_getWindowStatus()!=5)||ui_visible());
 }
 void after_midna_trigger(ModContext*,void*,void* result,void*){
     if(kcrux_controls_enabled())*static_cast<BOOL*>(result)=s_midna.pressed;
@@ -161,7 +163,7 @@ HookAction map_action_trigger(ModContext*,void* args,void* result,void*){
     }
     if(action!=dusk::ActionBinds::OPEN_MAP_SCREEN&&action!=dusk::ActionBinds::TOGGLE_MINIMAP)return HOOK_CONTINUE;
     *static_cast<bool*>(result)=action==dusk::ActionBinds::OPEN_MAP_SCREEN
-        ?((dMeter2Info_getWindowStatus()==4||dMeter2Info_getWindowStatus()==5)?(!s_mapFromCollection&&s_mapMenu.pressed):s_mapOverride&&s_mapGesture.tap)
+        ?s_mapOverride&&s_mapGesture.tap
         :s_mapOverride&&s_mapGesture.hold;
     return HOOK_SKIP_ORIGINAL;
 }
@@ -570,10 +572,8 @@ void after_pad_read(ModContext*,void*,void*,void*){
     const bool tabs=collection||(map&&s_mapFromCollection);
     const bool subtabs=collection&&(s_collectionPage==2||s_collectionPage==3);
     s_subTabLT.sample(lt,!subtabs);s_subTabRT.sample(rt,!subtabs);
-    s_menuTabLT.sample(lt,!tabs||subtabs);
-    s_menuTabRT.sample(rt,!collection||items||subtabs||s_collectionPage<0);
-    s_menuLeft.sample(button(9)||s_menuTabLT.button.held,!tabs);
-    s_menuRight.sample(button(10)||s_menuTabRT.button.held,!tabs);
+    s_menuLeft.sample(button(9),!tabs);
+    s_menuRight.sample(button(10),!tabs);
     if(tabs&&pad){
         // Different native/Essentials consumers read digital L/R or the
         // analog lock fields. Both must agree about which action owns RT.
@@ -613,9 +613,6 @@ void after_pad_read(ModContext*,void*,void*,void*){
         constexpr u32 directions=PAD_BUTTON_LEFT|PAD_BUTTON_RIGHT|PAD_BUTTON_UP|PAD_BUTTON_DOWN;
         input.mButtonFlags&=~directions;
         input.mPressedButtonFlags&=~directions;
-        // Native maps close through this input, not the gameplay map action.
-        // In the Advanced UI Map tab the bumpers remain tab navigation.
-        if(map&&!s_mapFromCollection&&s_mapMenu.pressed)input.mPressedButtonFlags|=PAD_BUTTON_LEFT;
     }
     // The Wii item wheel is opened by native Up. Feed that consumer from the
     // physical RB alone, including while the wheel is open and RB is held.
@@ -856,7 +853,7 @@ ModResult initialize_kcrux_controls(ModError* error){
     if(result!=MOD_OK)return mods::set_error(error,result,"could not install five-slot controls");
     // Save lifecycle owns migration; title-screen data must not be saved as a real slot.
     s_loaded=false;reset_transient();
-    svc_log->info(mod_ctx,"Rewired controls revision 30: menu trigger ownership and Essentials 3.0.2 map compatibility");return MOD_OK;
+    svc_log->info(mod_ctx,"Rewired controls revision 31: separate pause tab inputs and native map Back");return MOD_OK;
 }
 void shutdown_kcrux_controls(){
     mods::hook::uninstall<RewiredMixOn>(svc_hook);mods::hook::uninstall<RewiredMixOff>(svc_hook);
@@ -879,11 +876,11 @@ void shutdown_kcrux_controls(){
     mods::hook::uninstall<KcruxGrabTrigger>(svc_hook);mods::hook::uninstall<KcruxGrabHold>(svc_hook);
     mods::hook::uninstall<KcruxSecondaryTrigger>(svc_hook);mods::hook::uninstall<KcruxSecondaryHold>(svc_hook);
     mods::hook::uninstall<KcruxMapSample>(svc_hook);mods::hook::uninstall<KcruxMapTrig>(svc_hook);
-    s_mapGesture={};s_mapMenu={};s_mapOverride=false;
+    s_mapGesture={};s_mapOverride=false;
     if(s_saveObserver&&svc_save)svc_save->unobserve_saves(mod_ctx,s_saveObserver);
     s_saveObserver=0;s_loaded=false;s_slots={};reset_transient();s_dpad={};s_items={};s_sword={};s_cancel={};s_view={};s_object={};s_midna={};s_fire={};s_quick={};s_target={};
     s_collectionOpen=false;s_collectionPage=0;s_collectionTarget=-1;
-    s_menuLeft={};s_menuRight={};s_menuDpad={};s_menuTrigger={};s_menuTabLT={};s_menuTabRT={};s_subTabLT={};s_subTabRT={};s_wheelDirect={};s_menuCombine={};
+    s_menuLeft={};s_menuRight={};s_menuDpad={};s_menuTrigger={};s_subTabLT={};s_subTabRT={};s_wheelDirect={};s_menuCombine={};
     s_button=nullptr;s_axis=nullptr;s_enabled=0;s_modeAtBoot=false;
 }
 }

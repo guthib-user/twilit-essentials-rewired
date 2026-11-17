@@ -1,13 +1,13 @@
 {
   "release": {
-    "revision": 30,
-    "state": "installed in Rewired Playtest",
-    "core": "0.1.9",
-    "hud": "0.1.5",
+    "revision": 31,
+    "state": "staged for the next Rewired Playtest launch",
+    "core": "0.1.10",
+    "hud": "0.1.6",
     "slot_service": "1.4",
     "packages_sha256": {
-      "twilit_rewired_controls.dusk": "82ee14b1e0c7157d34c6954f6a280d56e1c125f407578d8f286a79661940cad1",
-      "twilit_rewired_hud.dusk": "529791f837fdfb4064326d0301f7efe8b40d36e8243dadb46825d5b59a62aad9"
+      "twilit_rewired_controls.dusk": "2427c32f01d81b05a36a7398095325254d1bbf9ec72d1ce75cec381126f72057",
+      "twilit_rewired_hud.dusk": "f42ed38f60ef97dac990d63b20938771e293e01cc287cf8d4aa7456e0006005b"
     }
   },
   "dusklight": {

@@ -1,15 +1,16 @@
 # Current status
 
-Updated 2026-11-17. Rewired Playtest has revision **30** installed with core
-**0.1.9**, HUD **0.1.5**, slot service **1.4**, and official Essentials **3.0.2**.
-The launcher validates packages and keeps the prior revision for rollback.
+Updated 2026-11-17. Revision **31** is staged for the next Rewired Playtest
+launch with core **0.1.10**, HUD **0.1.6**, slot service **1.4**, and official
+Essentials **3.0.2**. The launcher validates both packages and backs up the
+previous revision.
 
 Two player launches reached title initialization before Vulkan reported device
-loss. The system log records an RX 9070 XT reset in both cases. The Rewired
-Playtest shortcut now starts windowed on the integrated Radeon using X11.
-An isolated copy reached the title with production packages, then loaded the
-copied save into Hyrule Field with all nine mods active in a separate gameplay
-test. The cause of the dedicated GPU resets is still open.
+loss. The system log records an RX 9070 XT reset in both cases. Rewired Playtest
+now uses the RX 9070 XT on Wayland with Vulkan FIFO presentation and OBS game
+capture disabled for that launch. The copied save loaded into Hyrule Field
+with all nine mods, and a fullscreen test passed the focused menu checks with
+no new reset. The cause of the original resets has not been isolated.
 
 ## Current behavior
 
@@ -20,6 +21,16 @@ switches on restart. Dawnlight is disabled in this instance; Twilit Essentials
 a full native Items/Settings extension is still unavailable in that package.
 
 ## Last release and verification
+
+Revision 31 keeps outer tab navigation on LB/RB and Collection sections on
+LT/RT. Matching trigger badges render at both tested aspect ratios. The
+standalone map's B badge follows native Back, including stepping out through
+zoom levels. Y placed and removed map markers, X opened Style, and RT opened
+and closed Portals without changing markers. The copied player save reached
+the native “You cannot warp now” message, and an eligible fixture opened
+Portals. The focused suite passed 46 controller checks.
+
+## Earlier releases
 
 Revision 30 audits the Essentials 3.0.2 Advanced UI. RT opens and closes
 the native portal view, preserving Y markers, X marker style and the warp
