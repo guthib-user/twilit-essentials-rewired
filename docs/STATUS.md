@@ -1,10 +1,15 @@
 # Current status
 
-Updated 2026-11-16. Revision **30** is staged for the next full launch of
-Rewired Playtest: core **0.1.9**, HUD **0.1.5**, slot service **1.4**. The
-launcher validates packages and keeps the prior revision for rollback. The
-player already has official Essentials **3.0.2** installed. Normal TP Custom,
-the shared AppImage, and player saves were untouched.
+Updated 2026-11-17. Rewired Playtest has revision **30** installed with core
+**0.1.9**, HUD **0.1.5**, slot service **1.4**, and official Essentials **3.0.2**.
+The launcher validates packages and keeps the prior revision for rollback.
+
+Two player launches reached title initialization before Vulkan reported device
+loss. The system log records an RX 9070 XT reset in both cases. The Rewired
+Playtest shortcut now starts windowed on the integrated Radeon using X11.
+An isolated copy reached the title with production packages, then loaded the
+copied save into Hyrule Field with all nine mods active in a separate gameplay
+test. The cause of the dedicated GPU resets is still open.
 
 ## Current behavior
 

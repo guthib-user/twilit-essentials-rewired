@@ -10,6 +10,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 import hashlib
@@ -166,6 +167,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Launch Twilight Princess with coherent Rewired/TE settings")
     parser.add_argument("--user-dir", type=Path, default=DEFAULT_PROFILE)
     parser.add_argument("--sync-only", action="store_true")
+    parser.add_argument("--graphics-recovery-pci", metavar="ADDRESS",
+                        help="Launch windowed on X11 using the specified Mesa Vulkan GPU")
     args = parser.parse_args()
     profile = args.user_dir.expanduser().resolve()
     profile.mkdir(parents=True, exist_ok=True)
@@ -177,7 +180,18 @@ def main() -> int:
         if args.sync_only:
             return 0
         runtime = runtime_for_profile(profile)
-        os.execv(str(runtime), [str(runtime), "--user-dir", str(profile), "--backend", "vulkan", "--log-level", "info", str(ROM)])
+        command = [str(runtime), "--user-dir", str(profile), "--backend", "vulkan", "--log-level", "info"]
+        environment = os.environ.copy()
+        if args.graphics_recovery_pci:
+            pci = args.graphics_recovery_pci.lower()
+            if not re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]", pci):
+                raise RuntimeError("Graphics recovery needs a PCI address such as 0000:03:00.0.")
+            if not Path(f"/dev/dri/by-path/pci-{pci}-render").exists():
+                raise RuntimeError(f"Graphics recovery could not find the GPU at {pci}.")
+            environment["SDL_VIDEODRIVER"] = "x11"
+            environment["DRI_PRIME"] = "pci-" + pci.replace(":", "_").replace(".", "_") + "!"
+            command.extend(["--cvar", "video.enableFullscreen=false"])
+        os.execve(str(runtime), [*command, str(ROM)], environment)
 
 
 if __name__ == "__main__":

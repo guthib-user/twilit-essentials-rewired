@@ -1,7 +1,7 @@
 {
   "release": {
     "revision": 30,
-    "state": "staged; revision 29 remains installed until next launcher start",
+    "state": "installed in Rewired Playtest",
     "core": "0.1.9",
     "hud": "0.1.5",
     "slot_service": "1.4",

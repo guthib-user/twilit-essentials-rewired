@@ -91,6 +91,15 @@ Its launcher hash must match the installed private runtime. Never patch the
 shared AppImage. Preserve `build/revision26-installed.json` and the local update
 backup when changing or rolling back this runtime.
 
+On Linux with Mesa, `rewired_launch.py --graphics-recovery-pci ADDRESS` selects
+one Vulkan GPU by PCI address and launches windowed through X11. See the
+[Mesa device selection documentation](https://docs.mesa3d.org/envvars.html#envvar-DRI_PRIME).
+This option is set on the Rewired Playtest shortcut for the local integrated
+GPU. To roll it back, restore the saved shortcut from the
+`update-backups/graphics-recovery-*` directory beside the launcher. Dusklight
+can drop overridden settings when it saves, so re-enable fullscreen in the
+game settings after restoring the shortcut if desired.
+
 Docs-only organization does not require reinstalling or launching the game.
 
 For a new crash, start with the relevant local log and use
