@@ -36,7 +36,7 @@ class OriginalFxTests(unittest.TestCase):
             archive.writestr('mod.json',json.dumps({'version':'0.1.2'}))
         bundle=root/'original-fx-runtime';bundle.mkdir()
         (bundle/'asset').write_bytes(b'verified')
-        (bundle/'manifest.json').write_text(json.dumps({'format':1,'files':{'asset':hashlib.sha256(b'verified').hexdigest()}}))
+        (bundle/'manifest.json').write_text(json.dumps({'format':1,'runtime_patch_revision':3,'files':{'asset':hashlib.sha256(b'verified').hexdigest()}}))
         (root/'wayland-test').touch()
         env={'WAYLAND_DISPLAY':'wayland-test','XDG_RUNTIME_DIR':str(root),'VK_INSTANCE_LAYERS':'existing','VK_LAYER_PATH':'/existing'}
         return profile,bundle,env
@@ -69,5 +69,19 @@ class OriginalFxTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             p,b,e=self.fixture(Path(tmp));del e['WAYLAND_DISPLAY'];before=e.copy()
             self.assertFalse(bridge.prepare_original_fx(p,e));self.assertEqual(e,before)
+
+    def test_crashing_revisions_never_inject_even_when_cel_selected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p,b,e=self.fixture(Path(tmp));before=e.copy()
+            config=(p/'config.json').read_bytes()
+            manifest=json.loads((b/'manifest.json').read_text())
+            for revision in (None, 1, 2):
+                if revision is None: manifest.pop('runtime_patch_revision',None)
+                else: manifest['runtime_patch_revision']=revision
+                (b/'manifest.json').write_text(json.dumps(manifest))
+                self.assertFalse(bridge.prepare_original_fx(p,e))
+                self.assertEqual(e,before)
+                self.assertFalse((p/'visual-fx-state').exists())
+                self.assertEqual((p/'config.json').read_bytes(),config)
 
 if __name__=='__main__':unittest.main()

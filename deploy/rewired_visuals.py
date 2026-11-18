@@ -18,6 +18,15 @@ def prepare_original_fx(profile: Path, environment: dict) -> bool:
         meta = json.loads(archive.read('mod.json'))
     if tuple(int(n) for n in meta['version'].split('.')) < (0, 1, 2):
         return False
+    manifest = json.loads((bundle / 'manifest.json').read_text())
+    if manifest.get('format') != 1:
+        raise RuntimeError('Unsupported original FX runtime manifest')
+    # Revisions 1 and 2 caused GPU resets on normal title-screen launches.
+    # Bypassing effects is insufficient: the injected layer still captures
+    # depth, allocates resources and reloads them during startup resizing.
+    if manifest.get('runtime_patch_revision', 0) <= 2:
+        print('DrawnShade is temporarily disabled after startup GPU crashes. Current and native color presets remain available.')
+        return False
     # The private layer currently requires a native Wayland surface. X11 must
     # remain a clean native-color fallback instead of presenting a black frame.
     display = environment.get('WAYLAND_DISPLAY', '')
@@ -25,9 +34,6 @@ def prepare_original_fx(profile: Path, environment: dict) -> bool:
     if not display or not socket.exists():
         print('DrawnShade unavailable in this session: a Wayland display is required. Native color presets remain available.')
         return False
-    manifest = json.loads((bundle / 'manifest.json').read_text())
-    if manifest.get('format') != 1:
-        raise RuntimeError('Unsupported original FX runtime manifest')
     for relative, digest in manifest['files'].items():
         path = bundle / relative
         if not path.resolve().is_relative_to(bundle.resolve()) or hashlib.sha256(path.read_bytes()).hexdigest() != digest:

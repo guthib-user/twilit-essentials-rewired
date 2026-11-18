@@ -23,6 +23,9 @@ logs, vendor code, or the whole source tree into context by default.
 - Build only the affected component and run relevant checks. A docs-only change
   does not need a game launch. Follow `docs/BUILD.md` for commands and deployment
   caveats; the general installer defaults to a different profile from Playtest.
+- For graphics-runtime releases, cold-start through the title screen using a
+  copy of every production mod and graphics setting. Direct-save fixture tests
+  do not cover this path. Do not deploy with an unresolved startup GPU reset.
 - Do not commit ignored game data, saves, credentials, compiled packages,
   runtime binaries, recordings, dumps, or the locally licensed bumper texture.
 - The renderer patch is pinned to one executable hash; never guess offsets or

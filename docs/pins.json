@@ -39,13 +39,15 @@
   },
   "visual_presets": {
     "version": "0.1.2",
-    "state": "installed in Rewired Playtest",
+    "state": "installed; original FX quarantined after startup GPU resets",
     "package_sha256": "c4fded861b1b0caf223cf0a1b22908bdb9e74f8faafe4c04710efdaae10a848c",
     "default_preset": "Current (original)",
     "count": 5,
     "original_fx_runtime_sha256": "8585f5e6598757b36b6775bf9f3fc17b70448aa865d9d741fa34066f38642e10",
     "runtime_upstream_commit": "1b65208c01ff0a4d3592d4617911d111c5fe4694",
     "source_manifest": "rewired-visuals/original-fx-sources.json",
-    "runtime_patch_revision": 2
+    "runtime_patch_revision": 2,
+    "original_fx_available": false,
+    "available_count": 4
   }
 }

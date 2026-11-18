@@ -1,5 +1,13 @@
 # Visual presets
 
+**2026-11-18 startup recovery:** original-FX runtime revisions 1 and 2 are
+blocked by the launcher after repeated normal-startup GPU resets. The player
+profile now selects Current. Cel is unavailable until a replacement passes
+normal cold-start testing with the complete production mod set; the bundle
+remains for isolated investigation. Native color presets remain available.
+The original-FX behavior and verification below describe the prior implementation,
+not a working Cel release.
+
 Rewired Visual Presets **0.1.2** replaces the incomplete native cel recreation
 with the **original ReShade FX files**, executed by a private, patched vkShade
 runtime (compatibility revision 2). The previous 0.1.0/0.1.1 description overstated the DrawnShade adaptation:

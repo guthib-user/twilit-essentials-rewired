@@ -2,50 +2,38 @@
 
 Updated 2026-11-18. Installed gameplay revision **32** uses core **0.1.11**,
 HUD **0.1.6**, slot service **1.4**, and official Essentials **3.0.2**.
-Optional **Rewired Visual Presets 0.1.2** and its private original-FX runtime
-(compatibility revision **2**) are installed in Rewired Playtest. Gameplay core/HUD hashes and the player's
-configuration are unchanged. The previous launcher, package and configuration
-were backed up before installation.
 
-The earlier Cel implementation was an incomplete Comic recreation and did not
-reproduce DrawnShade's active stack. It has been removed. Version 0.1.2 runs the
-original seven non-bloom FX implementations and preset values through a pinned,
-patched vkShade runtime. AmbientLight, OrtonBloom and PD80 Bloom are excluded;
-existing game bloom remains untouched. The author's INI does not pin shader
-revisions: our compatible source versions and hashes are recorded, without
-claiming identical author-PC revisions. See [scope and provenance](VISUAL-PRESETS.md).
+**Startup recovery:** the player's next normal launch after FX runtime revision 2
+crashed at title initialization. Vulkan reported device loss, and the kernel
+recorded an RX 9070 XT illegal-opcode fault and GPU reset. The FX log ends after
+its startup resize reload. This narrows investigation but does not establish the
+precise defective command or resource lifetime.
 
-Runtime revision 2 addresses the player's flickering shadows/outlines and faint
-pixel-grid report. Compute-written luminance mipmaps now refresh, restoring
-Lumenite motion confidence (zero before; approximately 0.975 in the stationary
-comparison). Single-level write views and mip-generation barriers are corrected.
-Depth samplers honor the shader's requested filtering when supported by the bound
-format; the regular grid disappeared in Ordon captures with fine mesh still on.
-The original FX files/preset values, bloom, core/HUD and saved settings are unchanged.
-Actual integer-axis camera pans were checked in Hyrule Field and Ordon Village;
-player confirmation in the originally affected area remains open. See the
-[temporal verification limits](VISUAL-PRESETS.md#temporal-correction-runtime-revision-2).
+The launcher now refuses to inject original-FX runtime revisions 1 and 2, even
+when Cel is selected. Merely bypassing the effects is insufficient because the
+loaded layer still captures depth and manages GPU resources. The installed
+preset is reset to **Current (original)**; the previous helper/configuration are
+backed up. The FX bundle is retained for isolated debugging. **Cel is unavailable,
+not fixed.** Native color presets remain available. Saves, gameplay packages,
+bloom and other graphics settings were preserved; only the selected preset changed.
 
-Focused checks: original FX rendered in an interior and Hyrule Field; the AO
-diagnostic followed real scene geometry; Kernel/RTAO shared outputs and complete
-shader creation were verified. All five selector values, Current bypass, original
-comparison and live mesh controls were exercised. The actual F1 Mods panel opened
-and changed Current/Cel, mesh width/detail and comparison with the private control
-state and saved settings checked. Five original-FX setup checks, seven staged
-update safety checks and the patched runtime device-feature tests pass.
+Recovery verification uses a fresh copy of the player's complete profile: all
+10 production mods, HUD 0.1.6 and all 1,084 Henriko texture replacements. No
+virtual-controller fixture, direct-save load or stage override is used. Desktop
+launches remained alive without a new GPU reset; their presented output was not
+verified because another app remained foreground. A separate 1920x1080 Gamescope
+Wayland cold launch visibly advanced through the opening sequence with the
+same packages. Background pausing was disabled only in the copied profile.
+The blocked library is absent from the process. Six FX setup/recovery tests and
+seven staged-update safety tests pass. This is launch recovery, not a Cel shader
+repair or a mission playtest.
 
-Original FX require native Wayland and process presented HUD/menu pixels too.
-The three other presets remain native color adaptations before HUD. Early
-X11/Gamescope/manifest integration failures stayed in the disposable test instance;
-the final private layer uses the tested Wayland path and correct function exports.
-No player mission playtest or frame-rate benchmark is claimed.
-
-Two player launches reached title initialization before Vulkan reported device
-loss. The system log records an RX 9070 XT reset in both cases. Rewired Playtest
-now uses the RX 9070 XT on Wayland with Vulkan FIFO presentation and OBS game
-capture disabled for that launch. The copied save loaded into Hyrule Field
-with all nine mods, and a fullscreen test passed the focused menu checks with
-no new reset. The cause of the original resets has not been isolated.
+Previous revision-2 shader diagnostics corrected compute-written mipmaps, write
+views/barriers, and requested depth filtering. Isolated camera pans/grid checks
+and the original shader provenance remain documented in
+[visual presets](VISUAL-PRESETS.md). Those checks skipped normal startup and used
+a different test mod set, so they did **not** justify declaring normal launch
+fixed or installing the runtime while the earlier GPU resets were unresolved.
 
 ## Current behavior
 
