@@ -5,7 +5,8 @@
   },
   "runtime": {
     "repository": "https://github.com/slobodaapl/vkShade.git",
-    "commit": "1b65208c01ff0a4d3592d4617911d111c5fe4694"
+    "commit": "1b65208c01ff0a4d3592d4617911d111c5fe4694",
+    "patch_revision": 2
   },
   "files": [
     {

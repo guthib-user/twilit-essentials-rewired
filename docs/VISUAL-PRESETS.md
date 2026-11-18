@@ -2,7 +2,7 @@
 
 Rewired Visual Presets **0.1.2** replaces the incomplete native cel recreation
 with the **original ReShade FX files**, executed by a private, patched vkShade
-runtime. The previous 0.1.0/0.1.1 description overstated the DrawnShade adaptation:
+runtime (compatibility revision 2). The previous 0.1.0/0.1.1 description overstated the DrawnShade adaptation:
 it implemented only part of Comic and omitted the rest of the active chain.
 That implementation has been removed.
 
@@ -69,6 +69,12 @@ unavailable. The normal TP Custom shortcut/profile and saves are untouched.
 Pinned upstream: slobodaapl/vkShade `1b65208c01ff0a4d3592d4617911d111c5fe4694`.
 [The compatibility patch](../rewired-visuals/runtime/vkshade-compat.patch) adds:
 
+- Refresh compute-written mip chains, use single-level framebuffer/storage views,
+  and synchronize shader/render writes before mip generation. This restores
+  Lumenite's motion confidence and temporal AO smoothing.
+- Honor shader-requested depth filtering when the bound format supports linear
+  sampling, with a point-filter fallback on unsupported formats. Forced point
+  filtering previously produced visible grid/stripe patterns on flat surfaces.
 - Shared same-named textures between separate FX files, retaining owners and
   checking shape/format. Lumenite AO consumes Kernel's real outputs.
 - Safe copies of the loader/Features2 chain to enable supported shader-storage
@@ -115,3 +121,29 @@ tests. These verify effect order/values/exclusions, config preservation, private
 layer setup, integrity rejection, fallback behavior and safe feature-chain copies.
 Additional visual preference, performance and mission coverage remain player
 playtesting, not inferred from compilation.
+
+### Temporal correction (runtime revision 2)
+
+The player reported moving-outline/shadow flicker and a faint background grid
+following 0.1.2. Static screenshots had missed these failures. Lumenite's compute
+pass wrote the current luminance base level but vkShade only generated mipmaps
+for graphics passes. The optical-flow passes therefore read empty coarse levels.
+The corrected path follows [ReShade's storage-write mip generation](https://github.com/crosire/reshade/blob/main/source/runtime.cpp).
+Framebuffer/storage views also now address only mip zero, and transfer barriers
+include the actual producing stages/accesses.
+
+In the isolated Bo's House diagnostic, mean motion confidence rose from zero
+to approximately 0.975 while stationary, with the same shader and scene. AO-only
+frame sequences showed substantially less stationary background noise. Initial
+capture-script “pan” labels used fractional values with an integer-axis fixture;
+those sequences are **stationary**, not movement evidence. Corrected integer-axis
+camera pans were separately captured in Hyrule Field and Ordon Village. Ordon
+showed the regular grid disappear after honoring supported linear depth sampling,
+with fine mesh detail still on. FX source files and preset values are unchanged.
+
+Checks used the full graphics profile and Compass at a 1920×1080 presented canvas;
+this harness still pillarboxes the game image, so it is not a widescreen validation.
+The earlier runtime produced a GPU reset on one additional outdoor launch;
+corrected-runtime outdoor launches completed. This is not proof that every
+previous GPU-reset cause is resolved. No mission completion or frame-rate benchmark
+is claimed. Diagnostic files and recordings remain in ignored build storage.

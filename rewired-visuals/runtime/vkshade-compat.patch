@@ -1,10 +1,24 @@
+diff --git a/src/command_buffer.cpp b/src/command_buffer.cpp
+index d90bb23..6113acd 100644
+--- a/src/command_buffer.cpp
++++ b/src/command_buffer.cpp
+@@ -263,7 +263,8 @@ namespace vkShade
+                 hasDepthResolveTarget ? getDepthResolveReadOnlyLayout(pLogicalSwapchain) : VK_IMAGE_LAYOUT_UNDEFINED;
+             for (auto& effect : effects)
+             {
+-                effect->useDepthImage(i, boundDepthImageView, boundDepthLayout);
++                effect->useDepthImage(i, boundDepthImageView, boundDepthLayout,
++                                      hasDepthResolveTarget ? pLogicalSwapchain->depthResolveFormat : VK_FORMAT_UNDEFINED);
+             }
+
+             VkResult result = pLogicalDevice->vkd.BeginCommandBuffer(commandBuffers[i], &beginInfo);
 diff --git a/src/config.cpp b/src/config.cpp
 index 3ea5bfb..81c1d96 100644
 --- a/src/config.cpp
 +++ b/src/config.cpp
 @@ -22,7 +22,7 @@ namespace vkShade
              tmpConfigEnv ? std::string(tmpConfigEnv) + "/vkShade/vkShade.conf" : homePath + "/.config/vkShade/vkShade.conf";
- 
+
          const std::array<std::string, 5> configPaths = {
 -            userXdgConfigFile,
 +            ConfigSerializer::getBaseConfigDir() + "/vkShade.conf",
@@ -16,7 +30,7 @@ index ff225fb..84c948c 100644
 --- a/src/config_serializer.cpp
 +++ b/src/config_serializer.cpp
 @@ -83,6 +83,8 @@ namespace vkShade
- 
+
      std::string ConfigSerializer::getBaseConfigDir()
      {
 +        if (const char* privateDir = std::getenv("VKSHADE_CONFIG_DIR"))
@@ -64,11 +78,11 @@ index e8408aa..427a406 100644
 +++ b/src/device_features.hpp
 @@ -1,6 +1,8 @@
  #pragma once
- 
+
  #include "vulkan_include.hpp"
 +#include <vulkan/vk_layer.h>
 +#include <vector>
- 
+
  namespace vkShade
  {
 @@ -38,6 +40,8 @@ namespace vkShade
@@ -80,8 +94,21 @@ index e8408aa..427a406 100644
          VkPhysicalDeviceFaultFeaturesEXT faultFeature_{};
          bool                             deviceFaultEnabled_ = false;
      };
+diff --git a/src/effects/effect.hpp b/src/effects/effect.hpp
+index 9086dbb..fbdb135 100644
+--- a/src/effects/effect.hpp
++++ b/src/effects/effect.hpp
+@@ -18,7 +18,7 @@ namespace vkShade
+     public:
+         void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) = 0;
+         void virtual updateEffect(){};
+-        void virtual useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout = VK_IMAGE_LAYOUT_UNDEFINED){};
++        void virtual useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout = VK_IMAGE_LAYOUT_UNDEFINED, VkFormat depthFormat = VK_FORMAT_UNDEFINED){};
+         virtual std::vector<std::unique_ptr<EffectParam>> getParameters() const
+         {
+             return {};
 diff --git a/src/effects/effect_reshade.cpp b/src/effects/effect_reshade.cpp
-index 9a52baa..53fff9f 100644
+index 9a52baa..b2a0bfe 100644
 --- a/src/effects/effect_reshade.cpp
 +++ b/src/effects/effect_reshade.cpp
 @@ -255,7 +255,8 @@ namespace vkShade
@@ -93,7 +120,7 @@ index 9a52baa..53fff9f 100644
 +                                 const std::vector<std::shared_ptr<ReshadeEffect>>& earlierEffects)
      {
          Logger::debug("in creating ReshadeEffect");
- 
+
 @@ -400,6 +401,38 @@ namespace vkShade
                  textureFormatsSRGB[name]     = this->sharedOwner->textureFormatsSRGB.at(name);
                  continue;
@@ -133,11 +160,139 @@ index 9a52baa..53fff9f 100644
              VkExtent3D textureExtent = {module.textures[i].width, module.textures[i].height, textureDepth};
              // TODO handle mip map levels correctly
              // TODO handle pooled textures better
+@@ -448,7 +481,8 @@ namespace vkShade
+
+                 if (module.textures[i].levels > 1)
+                 {
+-
++                    // Framebuffer/storage views address mip zero; samplers retain
++                    // the complete chain for explicit lower-resolution reads.
+                     renderImageViewsUNORM[module.textures[i].unique_name] =
+                         std::vector<VkImageView>(inputImages.size(),
+                                                  createImageViews(pLogicalDevice,
+@@ -456,7 +490,7 @@ namespace vkShade
+                                                                   images,
+                                                                   textureViewType,
+                                                                   VK_IMAGE_ASPECT_COLOR_BIT,
+-                                                                  module.textures[i].levels)[0]);
++                                                                  1)[0]);
+
+                     renderImageViewsSRGB[module.textures[i].unique_name] =
+                         std::vector<VkImageView>(inputImages.size(),
+@@ -465,7 +499,7 @@ namespace vkShade
+                                                                   images,
+                                                                   textureViewType,
+                                                                   VK_IMAGE_ASPECT_COLOR_BIT,
+-                                                                  module.textures[i].levels,
++                                                                  1,
+                                                                   srgbViewUsage)[0]);
+                 }
+                 else
+@@ -659,19 +693,26 @@ namespace vkShade
+
+         std::vector<reshadefx::texture_filter> samplerFilters;
+         samplerFilters.reserve(module.samplers.size());
++        declaredDepthSamplers.resize(module.samplers.size(), VK_NULL_HANDLE);
+         for (size_t i = 0; i < module.samplers.size(); i++)
+         {
+             reshadefx::sampler_info info = module.samplers[i];
+             if (depthTextureNames.find(info.texture_name) != depthTextureNames.end())
++            {
++                // Preserve the shader's requested filtering when the actual bound
++                // depth format supports it; keep point filtering as a safe fallback.
++                if (!info.storage)
++                    declaredDepthSamplers[i] = createReshadeSampler(pLogicalDevice, info);
+                 info.filter = reshadefx::texture_filter::min_mag_mip_point;
++            }
+             samplerFilters.push_back(info.filter);
+
+             VkSampler sampler = createReshadeSampler(pLogicalDevice, info);
+
+             samplers.push_back(sampler);
+
+-            imageViewVector.push_back(info.srgb && !info.storage ? textureImageViewsSRGB[info.texture_name]
+-                                                                 : textureImageViewsUNORM[info.texture_name]);
++            imageViewVector.push_back(info.storage ? renderImageViewsUNORM[info.texture_name]
++                : (info.srgb ? textureImageViewsSRGB[info.texture_name] : textureImageViewsUNORM[info.texture_name]));
+         }
+
+         std::vector<VkDescriptorType> samplerBindingTypes(module.samplers.size(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+@@ -933,6 +974,12 @@ namespace vkShade
+                 runtime.dispatchSizeX = std::max(pass.dispatch_size_x, 1u);
+                 runtime.dispatchSizeY = std::max(pass.dispatch_size_y, 1u);
+                 runtime.dispatchSizeZ = std::max(pass.dispatch_size_z, 1u);
++                // Compute writes need the same mip-chain refresh as render targets.
++                // Otherwise optical-flow passes sample untouched lower resolutions.
++                for (const auto& binding : module.samplers)
++                    if (binding.storage && textureMipLevels.at(binding.texture_name) > 1 &&
++                        std::find(runtime.renderTargets.begin(), runtime.renderTargets.end(), binding.texture_name) == runtime.renderTargets.end())
++                        runtime.renderTargets.push_back(binding.texture_name);
+
+                 VkPipelineShaderStageCreateInfo shaderStageCreateInfoCompute = {};
+                 shaderStageCreateInfoCompute.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+@@ -1299,11 +1346,16 @@ namespace vkShade
+         }
+     }
+
+-    void ReshadeEffect::useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout)
++    void ReshadeEffect::useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout, VkFormat depthFormat)
+     {
+         if (imageIndex >= inputImages.size() || imageIndex >= inputDescriptorSets.size() || imageIndex >= inputImageViewsUNORM.size())
+             return;
+
++        VkFormatProperties depthProperties{};
++        if (depthImageView != VK_NULL_HANDLE && depthFormat != VK_FORMAT_UNDEFINED)
++            pLogicalDevice->vki.GetPhysicalDeviceFormatProperties(pLogicalDevice->physicalDevice, depthFormat, &depthProperties);
++        const bool supportsLinear = (depthProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
++
+         // Update DepthUniforms so bufready_depth reports correctly
+         bool hasDepth = (depthImageView != VK_NULL_HANDLE);
+         for (auto& uniform : uniforms)
+@@ -1331,7 +1383,8 @@ namespace vkShade
+                 if (info.texture_name == name)
+                 {
+                     VkDescriptorImageInfo imageInfo;
+-                    imageInfo.sampler = module.samplers[i].storage ? VK_NULL_HANDLE : samplers[i];
++                    imageInfo.sampler = module.samplers[i].storage ? VK_NULL_HANDLE
++                        : (supportsLinear && declaredDepthSamplers[i] != VK_NULL_HANDLE ? declaredDepthSamplers[i] : samplers[i]);
+                     // Use a input image if there is no depth image to prevent a crash
+                     imageInfo.imageView = depthImageView ? depthImageView : inputImageViewsUNORM[imageIndex];
+                     imageInfo.imageLayout =
+@@ -1569,14 +1622,12 @@ namespace vkShade
+                     }
+                     backBufferNext = !backBufferNext;
+                 }
+-
+-                for (const auto& renderTarget : runtime.renderTargets)
+-                {
+-                    generateMipMaps(
+-                        pLogicalDevice, commandBuffer, textureImages[renderTarget][0], textureExtents[renderTarget], textureMipLevels[renderTarget]);
+-                }
+             }
+
++            for (const auto& renderTarget : runtime.renderTargets)
++                generateMipMaps(pLogicalDevice, commandBuffer, textureImages.at(renderTarget)[0],
++                                textureExtents.at(renderTarget), textureMipLevels.at(renderTarget));
++
+             VkMemoryBarrier passMemoryBarrier = {};
+             passMemoryBarrier.sType           = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+             passMemoryBarrier.srcAccessMask   = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+@@ -1863,6 +1914,10 @@ namespace vkShade
+
+         pLogicalDevice->vkd.DestroyImage(pLogicalDevice->device, stencilImage, nullptr);
+
++        for (auto sampler : declaredDepthSamplers)
++            if (sampler != VK_NULL_HANDLE)
++                pLogicalDevice->vkd.DestroySampler(pLogicalDevice->device, sampler, nullptr);
++        declaredDepthSamplers.clear();
+         for (auto& sampler : samplers)
+         {
+             pLogicalDevice->vkd.DestroySampler(pLogicalDevice->device, sampler, nullptr);
 diff --git a/src/effects/effect_reshade.hpp b/src/effects/effect_reshade.hpp
-index d762f40..e257f4d 100644
+index d762f40..9d482d3 100644
 --- a/src/effects/effect_reshade.hpp
 +++ b/src/effects/effect_reshade.hpp
-@@ -40,7 +40,8 @@ namespace vkShade
+@@ -40,10 +40,11 @@ namespace vkShade
                        const std::string&                         effectPath  = "", // Optional: explicit path to .fx file
                        const std::vector<PreprocessorDefinition>& customDefs  = {}, // Custom preprocessor definitions
                        const std::optional<std::string>&          technique   = std::nullopt,
@@ -146,21 +301,63 @@ index d762f40..e257f4d 100644
 +                      const std::vector<std::shared_ptr<ReshadeEffect>>& earlierEffects = {});
          void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
          void virtual updateEffect() override;
-         void virtual useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout) override;
-@@ -108,6 +109,7 @@ namespace vkShade
+-        void virtual useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout) override;
++        void virtual useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout, VkFormat depthFormat) override;
+         std::vector<std::unique_ptr<EffectParam>> getParameters() const override;
+         int                                       getOutputWrites() const
+         {
+@@ -101,6 +102,7 @@ namespace vkShade
+         VkPipelineLayout                    pipelineLayout                  = VK_NULL_HANDLE;
+         VkExtent2D                          imageExtent                     = {};
+         std::vector<VkSampler>              samplers;
++        std::vector<VkSampler>              declaredDepthSamplers;
+         EffectRegistry*                     pEffectRegistry = nullptr;
+         std::string                         effectName;
+         std::string                         effectPath;             // Path to .fx file (may differ from effectName)
+@@ -108,6 +110,7 @@ namespace vkShade
          reshadefx::module                   module;
          std::vector<VkDeviceMemory>         textureMemory;
          std::shared_ptr<ReshadeEffect>      sharedOwner;
 +        std::vector<std::shared_ptr<ReshadeEffect>> textureOwners;
- 
+
          VkFormat    inputOutputFormatUNORM = VK_FORMAT_UNDEFINED;
          VkFormat    inputOutputFormatSRGB  = VK_FORMAT_UNDEFINED;
+diff --git a/src/image.cpp b/src/image.cpp
+index 5e34d67..49e11b1 100644
+--- a/src/image.cpp
++++ b/src/image.cpp
+@@ -301,21 +301,21 @@ namespace vkShade
+
+             memoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_GENERAL;
+             memoryBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+-            memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
++            memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+             memoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+             pLogicalDevice->vkd.CmdPipelineBarrier(
+-                commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
++                commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+
+             memoryBarrier.subresourceRange.baseMipLevel = i;
+
+             memoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_GENERAL;
+             memoryBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+-            memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
++            memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+             memoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+             pLogicalDevice->vkd.CmdPipelineBarrier(
+-                commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
++                commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+
+             pLogicalDevice->vkd.CmdBlitImage(commandBuffer,
+                                              image,
 diff --git a/src/keyboard_input.cpp b/src/keyboard_input.cpp
 index a4862be..1087f56 100644
 --- a/src/keyboard_input.cpp
 +++ b/src/keyboard_input.cpp
 @@ -19,6 +19,7 @@ namespace vkShade
- 
+
      uint32_t convertToKeySym(const std::string& key)
      {
 +        if (key.empty() || key == "None") return 0u;
@@ -176,7 +373,7 @@ index 7854179..b8065de 100644
              effectStrings.push_back(stage.effectName);
          std::unordered_map<std::string, std::shared_ptr<ReshadeEffect>> sharedEffects;
 +        std::vector<std::shared_ptr<ReshadeEffect>> earlierEffects;
- 
+
          if (pLogicalSwapchain->imageCount == 0)
          {
 @@ -2202,7 +2203,8 @@ namespace vkShade
@@ -190,9 +387,9 @@ index 7854179..b8065de 100644
                              sharedEffects.emplace(effectStrings[i], reshadeEffect);
                          setStageError("");
 @@ -3294,6 +3296,23 @@ namespace vkShade
- 
+
              LogicalDevice* pDeviceForSettings = devIt->second.get();
- 
+
 +            if (const char* controlPath = std::getenv("REWIRED_FX_CONTROL"))
 +            {
 +                static auto nextCheck = std::chrono::steady_clock::time_point{};
@@ -214,7 +411,7 @@ index 7854179..b8065de 100644
              if (pDeviceForSettings && pDeviceForSettings->imguiOverlay && pDeviceForSettings->imguiOverlay->hasSettingsSaved())
              {
 @@ -3329,6 +3348,7 @@ namespace vkShade
- 
+
              // Hot-reload: check for key press or config file change
              bool shouldReload = false;
 +            bool fileChanged = false;
@@ -277,6 +474,6 @@ index 0184661..0503751 100644
 +        require(loaderA.pNext == &loaderB && loaderB.pNext == &validFeatures2,
 +                "caller loader chain was mutated");
 +        require(copiedFeatures->features.shaderStorageImageWriteWithoutFormat, "loader chain features missing");
- 
+
          fault.deviceFault             = VK_TRUE;
          fault.deviceFaultVendorBinary = VK_FALSE;

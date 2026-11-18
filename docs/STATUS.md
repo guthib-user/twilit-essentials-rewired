@@ -3,7 +3,7 @@
 Updated 2026-11-18. Installed gameplay revision **32** uses core **0.1.11**,
 HUD **0.1.6**, slot service **1.4**, and official Essentials **3.0.2**.
 Optional **Rewired Visual Presets 0.1.2** and its private original-FX runtime
-are installed in Rewired Playtest. Gameplay core/HUD hashes and the player's
+(compatibility revision **2**) are installed in Rewired Playtest. Gameplay core/HUD hashes and the player's
 configuration are unchanged. The previous launcher, package and configuration
 were backed up before installation.
 
@@ -14,6 +14,17 @@ patched vkShade runtime. AmbientLight, OrtonBloom and PD80 Bloom are excluded;
 existing game bloom remains untouched. The author's INI does not pin shader
 revisions: our compatible source versions and hashes are recorded, without
 claiming identical author-PC revisions. See [scope and provenance](VISUAL-PRESETS.md).
+
+Runtime revision 2 addresses the player's flickering shadows/outlines and faint
+pixel-grid report. Compute-written luminance mipmaps now refresh, restoring
+Lumenite motion confidence (zero before; approximately 0.975 in the stationary
+comparison). Single-level write views and mip-generation barriers are corrected.
+Depth samplers honor the shader's requested filtering when supported by the bound
+format; the regular grid disappeared in Ordon captures with fine mesh still on.
+The original FX files/preset values, bloom, core/HUD and saved settings are unchanged.
+Actual integer-axis camera pans were checked in Hyrule Field and Ordon Village;
+player confirmation in the originally affected area remains open. See the
+[temporal verification limits](VISUAL-PRESETS.md#temporal-correction-runtime-revision-2).
 
 Focused checks: original FX rendered in an interior and Hyrule Field; the AO
 diagnostic followed real scene geometry; Kernel/RTAO shared outputs and complete

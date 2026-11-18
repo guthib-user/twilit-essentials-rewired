@@ -89,7 +89,13 @@ def provision(destination, preset_path, library, cache=None):
         shutil.copy2(license, target)
         hashes[target.relative_to(destination).as_posix()] = sha(target.read_bytes())
     shutil.copy2(SOURCES, destination / 'sources.json')
-    (destination / 'manifest.json').write_text(json.dumps({'format': 1, 'runtime_commit': manifest['runtime']['commit'], 'files': hashes}, indent=2) + '\n')
+    installed = {
+        'format': 1, 'runtime_commit': manifest['runtime']['commit'],
+        'runtime_patch_revision': manifest['runtime']['patch_revision'],
+        'runtime_patch_sha256': sha((ROOT / 'rewired-visuals/runtime/vkshade-compat.patch').read_bytes()),
+        'files': hashes,
+    }
+    (destination / 'manifest.json').write_text(json.dumps(installed, indent=2) + '\n')
     return hashes
 
 
