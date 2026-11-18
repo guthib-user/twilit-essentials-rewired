@@ -1,5 +1,5 @@
-// Native adaptations of Comic.fx (Alexander Federwisch, BSD-3-Clause)
-// and SweetFX (CeeJay.dk and contributors, MIT). See res/SOURCES.md.
+// Native color adaptations of SweetFX (MIT). See res/SOURCES.md.
+// DrawnShade runs original FX externally; there is no native cel approximation.
 // No bloom/blur/grain pass is implemented. The source image is already lit
 // and shadowed by Dusklight/Essentials. HUD is drawn after this pass.
 struct Uniforms { settings: vec4f, camera: vec4f }
@@ -19,65 +19,6 @@ fn min4(v:vec4f)->f32{return min(min(v.x,v.y),min(v.z,v.w));}
 fn pixel(p:vec2i)->vec3f{
     return textureLoad(scene,clamp(p,vec2i(0),vec2i(textureDimensions(scene))-1),0).rgb;
 }
-fn linear_depth(p:vec2i)->f32{
-    let sample=textureLoad(depth,clamp(p,vec2i(0),vec2i(textureDimensions(depth))-1),0).r;
-    // Keep reverse-Z in its native range. Subtracting two far-plane-sized
-    // values first loses depth precision and draws stripes on distant slopes.
-    let distanceFromFar=select(1.0-sample,sample,u.camera.z>0.5);
-    return u.camera.x/max(u.camera.x+distanceFromFar*(u.camera.y-u.camera.x),0.0001);
-}
-
-// Comic's distance/luma/saturation strength curve and mesh curvature test.
-fn strength_curve(fade:vec3f,x:f32)->f32{
-    return smoothstep(0.0,1.0-fade.z,x+(0.2-1.2*fade.x))*
-           smoothstep(0.0,1.0-fade.z,1.0-x+(1.2*fade.y-1.0));
-}
-fn mesh_edge(c:f32,a:vec4f,b:vec4f)->f32{
-    let span=max(max4(a),max4(b))-min(min4(a),min4(b))+0.00001;
-    let cardinal=abs(vec4f(a.x,b.x,a.z,b.z)-c)/span;
-    let diagonal=abs(vec4f(a.y,b.y,a.w,b.w)-c)/span;
-    return max(max(abs(cardinal.x-cardinal.y),abs(cardinal.z-cardinal.w)),
-               max(abs(diagonal.x-diagonal.y),abs(diagonal.z-diagonal.w)));
-}
-fn comic(p:vec2i,c:vec3f)->vec3f{
-    let luma=vec3f(0.2126,0.7151,0.0721);
-    let center=dot(c,luma);
-    let width=i32(u.settings.z);
-    var a:array<vec3f,4>;var b:array<vec3f,4>;
-    a[0]=pixel(p+vec2i(0,-width)); a[1]=pixel(p+vec2i(width,-width));
-    a[2]=pixel(p+vec2i(width,0)); a[3]=pixel(p+vec2i(width,width));
-    b[0]=pixel(p+vec2i(0,width)); b[1]=pixel(p+vec2i(-width,width));
-    b[2]=pixel(p+vec2i(-width,0)); b[3]=pixel(p+vec2i(-width,-width));
-    let la=vec4f(dot(a[0],luma),dot(a[1],luma),dot(a[2],luma),dot(a[3],luma));
-    let lb=vec4f(dot(b[0],luma),dot(b[1],luma),dot(b[2],luma),dot(b[3],luma));
-    // DrawnShade: single-pass Sobel color edges, value-difference chroma edges.
-    let colorEdge=clamp(max(dot(la,vec4f(0,-1,-2,-1))+dot(lb,vec4f(0,1,2,1)),
-        dot(la,vec4f(2,1,0,-1))+dot(lb,vec4f(-2,-1,0,1))),0.0,1.0);
-    let ca=vec4f(hi(a[0]-la.x),hi(a[1]-la.y),hi(a[2]-la.z),hi(a[3]-la.w));
-    let cb=vec4f(hi(b[0]-lb.x),hi(b[1]-lb.y),hi(b[2]-lb.z),hi(b[3]-lb.w));
-    let chromaEdge=clamp(dot(abs(ca-cb),vec4f(1))*(1.0-dot(c-center,luma)),0.0,1.0)*0.5;
-    let d=linear_depth(p); var mesh=0.0;
-    var firstA=vec4f(0); var firstB=vec4f(0);
-    for(var i=1;i<=3;i++){
-        if(f32(i)>u.settings.z){break;}
-        let da=vec4f(linear_depth(p+vec2i(0,-i)),linear_depth(p+vec2i(i,-i)),
-            linear_depth(p+vec2i(i,0)),linear_depth(p+vec2i(i,i)));
-        let db=vec4f(linear_depth(p+vec2i(0,i)),linear_depth(p+vec2i(-i,i)),
-            linear_depth(p+vec2i(-i,0)),linear_depth(p+vec2i(-i,-i)));
-        if(i==width){firstA=da;firstB=db;}
-        mesh=max(mesh,mesh_edge(d,da,db));
-    }
-    let pix=f32(width)/vec2f(textureDimensions(scene));
-    let normal=normalize(cross(vec3f(0,pix.y,d-firstA.x),vec3f(-pix.x,0,d-firstA.z)));
-    let outline=1.0-clamp(normal.z*0.5+0.5,0.0,1.0);
-    // Values from DrawnShade.ini. Width is adjustable for the actual render resolution.
-    var edges=vec4f(colorEdge,chromaEdge,outline,pow(clamp(mesh,0.0,1.0),1.15)*2.5*u.settings.w);
-    edges*=vec4f(strength_curve(vec3f(0,0.1,0.8),d),strength_curve(vec3f(0,0.5,0.8),d),
-        strength_curve(vec3f(0,1,0.8),d),strength_curve(vec3f(-1,0.1,0.8),d));
-    edges*=min(strength_curve(vec3f(-0.855,1,0.8),center),strength_curve(vec3f(0,1,0.8),hi(c)-lo(c)));
-    return sat(mix(c,vec3f(0),max4(edges)));
-}
-
 // SweetFX LiftGammaGain, Tonemap, Vibrance, Curves, DPX and Sepia.
 fn lift_gamma_gain(c:vec3f,lift:vec3f,gamma:vec3f,gain:vec3f)->vec3f{
     return sat(pow(abs(sat(c*(1.5-0.5*lift)+0.5*lift-0.5)*gain),1.0/gamma));
@@ -148,6 +89,6 @@ fn grade(input:vec3f,style:i32)->vec3f{
 @fragment fn fragment_main(@builtin(position) position:vec4f)->@location(0) vec4f{
     let p=vec2i(position.xy);let original=pixel(p);let style=i32(u.settings.x);
     var result=original;
-    if(style==1){result=comic(p,original);}else{result=grade(original,style);}
+    result=grade(original,style);
     return vec4f(mix(original,result,u.settings.y),1);
 }

@@ -8,6 +8,10 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <cstdlib>
+#include <cstdio>
+#include <fstream>
+#include <string>
 
 DEFINE_MOD();
 IMPORT_SERVICE(CameraService, svc_camera);
@@ -27,10 +31,11 @@ WGPURenderPipeline pipeline{};
 uint64_t pipelineKey{};
 bool cameraValid{};
 float nearPlane=1, farPlane=100000;
+std::string fxControlPath, lastControl;
 struct Uniforms { float settings[4]; float camera[4]; };
 struct Draw { WGPUTextureView color, depth; uint32_t offset; };
 constexpr const char* Names[] = {
-    "Current (original)", "DrawnShade - Cel", "Enhanced Colors", "Better Lighting", "ChromeFX"
+    "Current (original)", "DrawnShade - original FX (no bloom)", "Enhanced Colors", "Better Lighting", "ChromeFX"
 };
 
 WGPUStringView str(const char* s) { return {s, WGPU_STRLEN}; }
@@ -88,13 +93,12 @@ void before_hud(ModContext*, const GfxStageContext*, void*) {
     svc_config->get_bool(mod_ctx,compareVar,&compare);
     svc_config->get_bool(mod_ctx,meshVar,&mesh);
     // Current is a true bypass: no resolve, draw or graphics configuration writes.
-    if(style<1||style>4||compare||strength<=0||!cameraValid)return;
+    if(style<2||style>4||compare||strength<=0||!cameraValid)return;
     GfxDeviceInfo device=GFX_DEVICE_INFO_INIT;
     if(svc_gfx->get_device_info(mod_ctx,&device)!=MOD_OK)return;
-    GfxResolveDesc request=GFX_RESOLVE_DESC_INIT;request.depth=style==1;
+    GfxResolveDesc request=GFX_RESOLVE_DESC_INIT;request.depth=false;
     GfxResolvedTargets targets=GFX_RESOLVED_TARGETS_INIT;
     if(svc_gfx->resolve_pass(mod_ctx,&request,&targets)!=MOD_OK||!targets.color)return;
-    if(style==1&&!targets.depth)return;
     Uniforms values{{float(style),std::clamp(float(strength)*.01f,0.f,1.f),float(std::clamp<int64_t>(width,1,3)),mesh?1.f:0.f},
         {nearPlane,farPlane,device.uses_reversed_z?1.f:0.f,0}};
     GfxRange range{};
@@ -111,25 +115,25 @@ ModResult build_ui(ModContext* ctx, UiElementHandle pane, void*, ModError*) {
     // SELECT requires a tabbed mod window's help pane. The Mods sidebar has
     // no help pane, so it must use the self-contained dropdown control.
     select.kind=UI_CONTROL_DROPDOWN;select.label="Preset";
-    select.help_rml="Switches immediately. Current bypasses all added processing. Each style preserves your existing bloom, dynamic shadows and textures. DrawnShade adapts Comic's outlines; the other styles adapt Twilight Princess community color presets.";
+    select.help_rml="Current bypasses the added processing. DrawnShade runs the original ReShade FX files and preset values, with AmbientLight, OrtonBloom and PD80 Bloom excluded. The other three choices are native color adaptations. Your game bloom and shadow settings stay unchanged.";
     select.binding=UI_BINDING_CONFIG_VAR;select.config_var=styleVar;
     select.options=Names;select.option_count=std::size(Names);
     result=svc_ui->pane_add_control(ctx,pane,&select,nullptr);
     if(result!=MOD_OK)return result;
     UiControlDesc strength=UI_CONTROL_DESC_INIT;
-    strength.kind=UI_CONTROL_NUMBER;strength.label="Style strength";
-    strength.help_rml="Blend the selected style with your current look. This does not change bloom or shadow strength.";
+    strength.kind=UI_CONTROL_NUMBER;strength.label="Color preset strength";
+    strength.help_rml="Applies to Enhanced Colors, Better Lighting and ChromeFX. DrawnShade uses the original preset strength.";
     strength.binding=UI_BINDING_CONFIG_VAR;strength.config_var=strengthVar;
     strength.min=0;strength.max=100;strength.step=5;strength.suffix="%";
     if((result=svc_ui->pane_add_control(ctx,pane,&strength,nullptr))!=MOD_OK)return result;
     UiControlDesc width=UI_CONTROL_DESC_INIT;
-    width.kind=UI_CONTROL_NUMBER;width.label="Cel outline width";
-    width.help_rml="Thickness in render pixels. Start with 1 for 1080p/1440p or 2 for bolder 4K outlines. Only affects DrawnShade.";
+    width.kind=UI_CONTROL_NUMBER;width.label="Cel mesh line width";
+    width.help_rml="Original Comic mesh iterations. The author uses 2; 1 can suit lower resolutions. This does not change the other edge detectors.";
     width.binding=UI_BINDING_CONFIG_VAR;width.config_var=widthVar;width.min=1;width.max=3;width.step=1;
     if((result=svc_ui->pane_add_control(ctx,pane,&width,nullptr))!=MOD_OK)return result;
     UiControlDesc mesh=UI_CONTROL_DESC_INIT;
     mesh.kind=UI_CONTROL_TOGGLE;mesh.label="Cel fine mesh detail";
-    mesh.help_rml="Adds the original preset's fine polygon detail. Off by default for cleaner scenery; enable for a more etched look.";
+    mesh.help_rml="Runs the original preset's fine mesh edge detector. Enabled by default, as in DrawnShade.";
     mesh.binding=UI_BINDING_CONFIG_VAR;mesh.config_var=meshVar;
     if((result=svc_ui->pane_add_control(ctx,pane,&mesh,nullptr))!=MOD_OK)return result;
     UiControlDesc compare=UI_CONTROL_DESC_INIT;
@@ -137,8 +141,9 @@ ModResult build_ui(ModContext* ctx, UiElementHandle pane, void*, ModError*) {
     compare.help_rml="Temporarily bypass the selected style without forgetting it.";
     compare.binding=UI_BINDING_CONFIG_VAR;compare.config_var=compareVar;
     if((result=svc_ui->pane_add_control(ctx,pane,&compare,nullptr))!=MOD_OK)return result;
+    if(fxControlPath.empty()) svc_ui->pane_add_text(ctx,pane,"DrawnShade is unavailable: launch through the Rewired shortcut with the original FX runtime installed.",nullptr);
     return svc_ui->pane_add_text(ctx,pane,
-        "Sources: DrawnShade by durchfallalarm / Comic by Alexander Federwisch; Enhanced Colors and Better Lighting by SwordDeath; ChromeFX by Magiike; SweetFX by CeeJay.dk and contributors. Adapted for native Dusklight without added bloom, blur, grain or chromatic aberration.",nullptr);
+        "DrawnShade by durchfallalarm: original Comic, Lumenite Kernel/RTAO, EyeAdaption, Depth Cues, ContrastStretch and Vignette. Color adaptations: SwordDeath, Magiike and SweetFX. Original FX also process HUD pixels. See Sources for versions and differences.",nullptr);
 }
 ModResult integer(const char* name,int value,ConfigVarHandle* handle){
     ConfigVarDesc desc=CONFIG_VAR_DESC_INIT;desc.name=name;desc.type=CONFIG_VAR_INT;desc.default_int=value;
@@ -148,17 +153,18 @@ ModResult integer(const char* name,int value,ConfigVarHandle* handle){
 
 extern "C" {
 MOD_EXPORT ModResult mod_initialize(ModError* error) {
+    if(const char* path=std::getenv("REWIRED_FX_CONTROL")) fxControlPath=path;
     if(integer("preset",0,&styleVar)!=MOD_OK||integer("strength",100,&strengthVar)!=MOD_OK||
-       integer("outline-width",1,&widthVar)!=MOD_OK)return mods::set_error(error,MOD_ERROR,"could not register visual presets");
+       integer("original-mesh-width",2,&widthVar)!=MOD_OK)return mods::set_error(error,MOD_ERROR,"could not register visual presets");
     ConfigVarDesc compare=CONFIG_VAR_DESC_INIT;compare.name="compare-original";
     if(svc_config->register_var(mod_ctx,&compare,&compareVar)!=MOD_OK)return MOD_ERROR;
-    ConfigVarDesc mesh=CONFIG_VAR_DESC_INIT;mesh.name="mesh-detail";
+    ConfigVarDesc mesh=CONFIG_VAR_DESC_INIT;mesh.name="original-mesh-detail";mesh.default_bool=true;
     if(svc_config->register_var(mod_ctx,&mesh,&meshVar)!=MOD_OK)return MOD_ERROR;
     GfxDeviceInfo device=GFX_DEVICE_INFO_INIT;
     if(svc_gfx->get_device_info(mod_ctx,&device)!=MOD_OK)return mods::set_error(error,MOD_ERROR,"graphics device unavailable");
     WGPUShaderSourceWGSL source=WGPU_SHADER_SOURCE_WGSL_INIT;source.code=str(PresetShader);
     WGPUShaderModuleDescriptor shaderDesc=WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
-    shaderDesc.label=str("Rewired Comic / SweetFX adaptations");shaderDesc.nextInChain=&source.chain;
+    shaderDesc.label=str("Rewired SweetFX color adaptations");shaderDesc.nextInChain=&source.chain;
     shader=wgpuDeviceCreateShaderModule(device.device,&shaderDesc);
     WGPUBindGroupLayoutEntry entries[3]{};
     for(int i=0;i<2;i++){
@@ -184,8 +190,24 @@ MOD_EXPORT ModResult mod_initialize(ModError* error) {
     if(result==MOD_OK)result=svc_ui->register_mods_panel(mod_ctx,&panel);
     return result;
 }
-MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
+MOD_EXPORT ModResult mod_update(ModError*) {
+    if(fxControlPath.empty()) return MOD_OK;
+    int64_t style=0,width=2; bool compare=false,mesh=true;
+    svc_config->get_int(mod_ctx,styleVar,&style);
+    svc_config->get_int(mod_ctx,widthVar,&width);
+    svc_config->get_bool(mod_ctx,compareVar,&compare);
+    svc_config->get_bool(mod_ctx,meshVar,&mesh);
+    const auto state="1 "+std::to_string(style==1&&!compare)+" "+
+        std::to_string(std::clamp<int64_t>(width,1,3))+" "+std::to_string(mesh)+"\n";
+    if(state!=lastControl) {
+        const auto temporary=fxControlPath+".next";
+        std::ofstream file(temporary); file<<state; file.close();
+        if(file && std::rename(temporary.c_str(),fxControlPath.c_str())==0) lastControl=state;
+    }
+    return MOD_OK;
+}
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
+    if(!fxControlPath.empty()) { std::ofstream file(fxControlPath); file<<"1 0 2 1\n"; }
     if(hudHook)svc_gfx->unregister_stage_hook(mod_ctx,hudHook);
     if(sceneHook)svc_gfx->unregister_stage_hook(mod_ctx,sceneHook);
     if(drawType)svc_gfx->unregister_draw_type(mod_ctx,drawType);

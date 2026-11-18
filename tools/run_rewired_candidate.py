@@ -46,7 +46,7 @@ if args.stage:command+=['--stage',args.stage]
 for cvar in args.cvar:command+=['--cvar',cvar]
 if args.headless:
     width,height=('1920','1080') if args.full_graphics else ('1280','720')
-    command=['gamescope','--backend','headless','-w',width,'-h',height,'-W',width,'-H',height,'-r','60','--','env','SDL_VIDEODRIVER=x11']+command
+    command=['gamescope','--expose-wayland','--backend','headless','-w',width,'-h',height,'-W',width,'-H',height,'-r','60','--','env','SDL_VIDEODRIVER=x11']+command
 p=subprocess.Popen(command,env=dict(os.environ,KCRUX_TEST_DIR=str(profile)),stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
 (root/'build/rewired-test-pid.txt').write_text(str(p.pid))
 print('Candidate PID',p.pid)

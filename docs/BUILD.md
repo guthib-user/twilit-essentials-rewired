@@ -37,11 +37,14 @@ prebuilt WebGPU dependency:
 cmake -S rewired-visuals -B build/rewired-visuals -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build/rewired-visuals -j4
 python3 tests/test_staged_update.py
+python3 tests/test_original_fx.py
 ```
 
 Output: `build/rewired-visuals/mods/twilit_rewired_visuals.dusk`. Stage it alongside
 the verified production controls/HUD packages using the launcher manifest. Do not
-use the fixture controls package. [Preset controls and sources](VISUAL-PRESETS.md).
+use the fixture controls package. Version 0.1.2 also needs the separately built,
+private original-FX runtime and `deploy/rewired_visuals.py` beside the launcher.
+[Runtime provisioning, preset controls and sources](VISUAL-PRESETS.md).
 
 ## Quick tests, no game required
 

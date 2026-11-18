@@ -38,10 +38,13 @@
     "required_enabled": false
   },
   "visual_presets": {
-    "version": "0.1.1",
-    "state": "staged for next Rewired Playtest launch",
-    "package_sha256": "69df1839d748b07906d5db4f371f827afd2ae06456111eefd17e9389cd02e77f",
+    "version": "0.1.2",
+    "state": "installed in Rewired Playtest",
+    "package_sha256": "c4fded861b1b0caf223cf0a1b22908bdb9e74f8faafe4c04710efdaae10a848c",
     "default_preset": "Current (original)",
-    "count": 5
+    "count": 5,
+    "original_fx_runtime_sha256": "5966d861b56614116fcfa16ef11ea4208b005d0ed7e966847d13b7a215e643c7",
+    "runtime_upstream_commit": "1b65208c01ff0a4d3592d4617911d111c5fe4694",
+    "source_manifest": "rewired-visuals/original-fx-sources.json"
   }
 }

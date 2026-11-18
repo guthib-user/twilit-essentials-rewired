@@ -2,25 +2,32 @@
 
 Updated 2026-11-18. Installed gameplay revision **32** uses core **0.1.11**,
 HUD **0.1.6**, slot service **1.4**, and official Essentials **3.0.2**.
-Optional **Rewired Visual Presets 0.1.1** is staged for the next Rewired Playtest
-launch, alongside the unchanged, verified production core/HUD packages. The
-launcher validates and backs up the packages before installing them.
+Optional **Rewired Visual Presets 0.1.2** and its private original-FX runtime
+are installed in Rewired Playtest. Gameplay core/HUD hashes and the player's
+configuration are unchanged. The previous launcher, package and configuration
+were backed up before installation.
 
-Five [visual choices](VISUAL-PRESETS.md) are available through the F1 Mods menu:
-Current, DrawnShade - Cel, Enhanced Colors, Better Lighting and ChromeFX.
-Current defaults to a true bypass. The new module preserves existing bloom and
-dynamic-shadow settings and adds no glow/blur. All five styles and original-look
-comparison rendered in the isolated full-graphics profile; the player's running
-game was not restarted. Seven transactional-update safety checks pass.
+The earlier Cel implementation was an incomplete Comic recreation and did not
+reproduce DrawnShade's active stack. It has been removed. Version 0.1.2 runs the
+original seven non-bloom FX implementations and preset values through a pinned,
+patched vkShade runtime. AmbientLight, OrtonBloom and PD80 Bloom are excluded;
+existing game bloom remains untouched. The author's INI does not pin shader
+revisions: our compatible source versions and hashes are recorded, without
+claiming identical author-PC revisions. See [scope and provenance](VISUAL-PRESETS.md).
 
-Visual Presets 0.1.1 fixes the reported **mod UI panel build failed** error.
-The 0.1.0 preset selector used `UI_CONTROL_SELECT`, which the host rejects in a
-Mods panel without a help pane. It now uses the supported dropdown. The original
-rendering checks did not exercise that panel. This fix was verified by opening
-F1 → Mods → Rewired Visual Presets in the isolated running game, selecting all
-five presets, changing strength and toggling original comparison through the
-actual menu, with the saved configuration checked after each change. No shader,
-bloom, gameplay or controller behavior changed in this fix.
+Focused checks: original FX rendered in an interior and Hyrule Field; the AO
+diagnostic followed real scene geometry; Kernel/RTAO shared outputs and complete
+shader creation were verified. All five selector values, Current bypass, original
+comparison and live mesh controls were exercised. The actual F1 Mods panel opened
+and changed Current/Cel, mesh width/detail and comparison with the private control
+state and saved settings checked. Five original-FX setup checks, seven staged
+update safety checks and the patched runtime device-feature tests pass.
+
+Original FX require native Wayland and process presented HUD/menu pixels too.
+The three other presets remain native color adaptations before HUD. Early
+X11/Gamescope/manifest integration failures stayed in the disposable test instance;
+the final private layer uses the tested Wayland path and correct function exports.
+No player mission playtest or frame-rate benchmark is claimed.
 
 Two player launches reached title initialization before Vulkan reported device
 loss. The system log records an RX 9070 XT reset in both cases. Rewired Playtest

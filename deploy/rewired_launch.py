@@ -196,6 +196,8 @@ def main() -> int:
             environment["SDL_VIDEODRIVER"] = "x11"
             environment["DRI_PRIME"] = "pci-" + pci.replace(":", "_").replace(".", "_") + "!"
             command.extend(["--cvar", "video.enableFullscreen=false"])
+        from rewired_visuals import prepare_original_fx
+        prepare_original_fx(profile, environment)
         os.execve(str(runtime), [*command, str(ROM)], environment)
 
 

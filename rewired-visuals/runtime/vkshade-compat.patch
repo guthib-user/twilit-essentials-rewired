@@ -1,0 +1,282 @@
+diff --git a/src/config.cpp b/src/config.cpp
+index 3ea5bfb..81c1d96 100644
+--- a/src/config.cpp
++++ b/src/config.cpp
+@@ -22,7 +22,7 @@ namespace vkShade
+             tmpConfigEnv ? std::string(tmpConfigEnv) + "/vkShade/vkShade.conf" : homePath + "/.config/vkShade/vkShade.conf";
+ 
+         const std::array<std::string, 5> configPaths = {
+-            userXdgConfigFile,
++            ConfigSerializer::getBaseConfigDir() + "/vkShade.conf",
+             userConfigFile,
+             std::string(SYSCONFDIR) + "/vkShade.conf",
+             std::string(SYSCONFDIR) + "/vkShade/vkShade.conf",
+diff --git a/src/config_serializer.cpp b/src/config_serializer.cpp
+index ff225fb..84c948c 100644
+--- a/src/config_serializer.cpp
++++ b/src/config_serializer.cpp
+@@ -83,6 +83,8 @@ namespace vkShade
+ 
+     std::string ConfigSerializer::getBaseConfigDir()
+     {
++        if (const char* privateDir = std::getenv("VKSHADE_CONFIG_DIR"))
++            if (*privateDir) return privateDir;
+         const char* xdgConfig = std::getenv("XDG_CONFIG_HOME");
+         if (xdgConfig)
+             return std::string(xdgConfig) + "/vkShade";
+diff --git a/src/device_features.cpp b/src/device_features.cpp
+index 14e99dc..f787fd7 100644
+--- a/src/device_features.cpp
++++ b/src/device_features.cpp
+@@ -43,6 +43,29 @@ namespace vkShade
+         if (features2)
+         {
+             enabledFeatures_ = features2->features;
++            // Clone the loader prefix and Features2 node; never mutate the
++            // application's const feature chain or discard its extension nodes.
++            bool cloneable = true;
++            for (const auto* node = reinterpret_cast<const VkBaseInStructure*>(createInfo.pNext);
++                 node && node != reinterpret_cast<const VkBaseInStructure*>(features2); node = node->pNext)
++            {
++                if (node->sType != VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO)
++                { cloneable = false; break; }
++                ownedLoaderLinks_.push_back(*reinterpret_cast<const VkLayerDeviceCreateInfo*>(node));
++            }
++            if (cloneable)
++            {
++                enabledFeatures_.shaderImageGatherExtended |= support.core.shaderImageGatherExtended;
++                enabledFeatures_.shaderStorageImageReadWithoutFormat |= support.core.shaderStorageImageReadWithoutFormat;
++                enabledFeatures_.shaderStorageImageWriteWithoutFormat |= support.core.shaderStorageImageWriteWithoutFormat;
++                ownedFeatures2_ = *features2;
++                ownedFeatures2_.features = enabledFeatures_;
++                const void* head = &ownedFeatures2_;
++                for (auto it = ownedLoaderLinks_.rbegin(); it != ownedLoaderLinks_.rend(); ++it)
++                { it->pNext = head; head = &*it; }
++                createInfo_.pNext = head;
++            }
++
+         }
+         else
+         {
+diff --git a/src/device_features.hpp b/src/device_features.hpp
+index e8408aa..427a406 100644
+--- a/src/device_features.hpp
++++ b/src/device_features.hpp
+@@ -1,6 +1,8 @@
+ #pragma once
+ 
+ #include "vulkan_include.hpp"
++#include <vulkan/vk_layer.h>
++#include <vector>
+ 
+ namespace vkShade
+ {
+@@ -38,6 +40,8 @@ namespace vkShade
+     private:
+         VkDeviceCreateInfo               createInfo_{};
+         VkPhysicalDeviceFeatures         enabledFeatures_{};
++        VkPhysicalDeviceFeatures2 ownedFeatures2_{};
++        std::vector<VkLayerDeviceCreateInfo> ownedLoaderLinks_;
+         VkPhysicalDeviceFaultFeaturesEXT faultFeature_{};
+         bool                             deviceFaultEnabled_ = false;
+     };
+diff --git a/src/effects/effect_reshade.cpp b/src/effects/effect_reshade.cpp
+index 9a52baa..53fff9f 100644
+--- a/src/effects/effect_reshade.cpp
++++ b/src/effects/effect_reshade.cpp
+@@ -255,7 +255,8 @@ namespace vkShade
+                                  const std::string&                         effectPath,
+                                  const std::vector<PreprocessorDefinition>& customDefs,
+                                  const std::optional<std::string>&          technique,
+-                                 std::shared_ptr<ReshadeEffect>             sharedOwner)
++                                 std::shared_ptr<ReshadeEffect>             sharedOwner,
++                                 const std::vector<std::shared_ptr<ReshadeEffect>>& earlierEffects)
+     {
+         Logger::debug("in creating ReshadeEffect");
+ 
+@@ -400,6 +401,38 @@ namespace vkShade
+                 textureFormatsSRGB[name]     = this->sharedOwner->textureFormatsSRGB.at(name);
+                 continue;
+             }
++            // ReShade shares same-named textures across effect files. Keep the
++            // producing effect alive while a consumer borrows its images/views.
++            const auto& declared = module.textures[i];
++            std::shared_ptr<ReshadeEffect> textureOwner;
++            for (const auto& earlier : earlierEffects)
++            {
++                auto source = std::find_if(earlier->module.textures.begin(), earlier->module.textures.end(),
++                    [&](const auto& candidate) { return candidate.unique_name == declared.unique_name; });
++                if (source == earlier->module.textures.end() || !source->semantic.empty())
++                    continue;
++                if (source->width != declared.width || source->height != declared.height ||
++                    source->depth != declared.depth || source->dimensions != declared.dimensions ||
++                    source->levels != declared.levels || source->format != declared.format)
++                    throw std::runtime_error("Incompatible shared texture: " + declared.unique_name);
++                textureOwner = earlier;
++                break;
++            }
++            if (textureOwner)
++            {
++                const auto& name = declared.unique_name;
++                borrowedTextureNames.insert(name);
++                textureOwners.push_back(textureOwner);
++                textureImages[name] = textureOwner->textureImages.at(name);
++                textureImageViewsUNORM[name] = textureOwner->textureImageViewsUNORM.at(name);
++                textureImageViewsSRGB[name] = textureOwner->textureImageViewsSRGB.at(name);
++                renderImageViewsUNORM[name] = textureOwner->renderImageViewsUNORM.at(name);
++                renderImageViewsSRGB[name] = textureOwner->renderImageViewsSRGB.at(name);
++                textureFormatsUNORM[name] = textureOwner->textureFormatsUNORM.at(name);
++                textureFormatsSRGB[name] = textureOwner->textureFormatsSRGB.at(name);
++                Logger::info("Shared texture " + name + " from " + textureOwner->effectName + " to " + effectName);
++                continue;
++            }
+             VkExtent3D textureExtent = {module.textures[i].width, module.textures[i].height, textureDepth};
+             // TODO handle mip map levels correctly
+             // TODO handle pooled textures better
+diff --git a/src/effects/effect_reshade.hpp b/src/effects/effect_reshade.hpp
+index d762f40..e257f4d 100644
+--- a/src/effects/effect_reshade.hpp
++++ b/src/effects/effect_reshade.hpp
+@@ -40,7 +40,8 @@ namespace vkShade
+                       const std::string&                         effectPath  = "", // Optional: explicit path to .fx file
+                       const std::vector<PreprocessorDefinition>& customDefs  = {}, // Custom preprocessor definitions
+                       const std::optional<std::string>&          technique   = std::nullopt,
+-                      std::shared_ptr<ReshadeEffect>             sharedOwner = {});
++                      std::shared_ptr<ReshadeEffect>             sharedOwner = {},
++                      const std::vector<std::shared_ptr<ReshadeEffect>>& earlierEffects = {});
+         void virtual applyEffect(uint32_t imageIndex, VkCommandBuffer commandBuffer) override;
+         void virtual updateEffect() override;
+         void virtual useDepthImage(uint32_t imageIndex, VkImageView depthImageView, VkImageLayout depthImageLayout) override;
+@@ -108,6 +109,7 @@ namespace vkShade
+         reshadefx::module                   module;
+         std::vector<VkDeviceMemory>         textureMemory;
+         std::shared_ptr<ReshadeEffect>      sharedOwner;
++        std::vector<std::shared_ptr<ReshadeEffect>> textureOwners;
+ 
+         VkFormat    inputOutputFormatUNORM = VK_FORMAT_UNDEFINED;
+         VkFormat    inputOutputFormatSRGB  = VK_FORMAT_UNDEFINED;
+diff --git a/src/keyboard_input.cpp b/src/keyboard_input.cpp
+index a4862be..1087f56 100644
+--- a/src/keyboard_input.cpp
++++ b/src/keyboard_input.cpp
+@@ -19,6 +19,7 @@ namespace vkShade
+ 
+     uint32_t convertToKeySym(const std::string& key)
+     {
++        if (key.empty() || key == "None") return 0u;
+         if (isWayland())
+             return convertToKeySymWayland(key);
+         return 0u;
+diff --git a/src/vkshade.cpp b/src/vkshade.cpp
+index 7854179..b8065de 100644
+--- a/src/vkshade.cpp
++++ b/src/vkshade.cpp
+@@ -2092,6 +2092,7 @@ namespace vkShade
+         for (const auto& stage : stages)
+             effectStrings.push_back(stage.effectName);
+         std::unordered_map<std::string, std::shared_ptr<ReshadeEffect>> sharedEffects;
++        std::vector<std::shared_ptr<ReshadeEffect>> earlierEffects;
+ 
+         if (pLogicalSwapchain->imageCount == 0)
+         {
+@@ -2202,7 +2203,8 @@ namespace vkShade
+                                                                              effectPath,
+                                                                              customDefs,
+                                                                              stages[i].technique,
+-                                                                             sharedOwner);
++                                                                             sharedOwner, earlierEffects);
++                        earlierEffects.push_back(reshadeEffect);
+                         if (stages[i].technique && !sharedOwner)
+                             sharedEffects.emplace(effectStrings[i], reshadeEffect);
+                         setStageError("");
+@@ -3294,6 +3296,23 @@ namespace vkShade
+ 
+             LogicalDevice* pDeviceForSettings = devIt->second.get();
+ 
++            if (const char* controlPath = std::getenv("REWIRED_FX_CONTROL"))
++            {
++                static auto nextCheck = std::chrono::steady_clock::time_point{};
++                static bool bridgeEnabled = false;
++                const auto now = std::chrono::steady_clock::now();
++                if (now >= nextCheck)
++                {
++                    nextCheck = now + std::chrono::milliseconds(100);
++                    int version = 0, enabled = 0, width = 2, mesh = 1;
++                    std::ifstream control(controlPath);
++                    bridgeEnabled = bool(control >> version >> enabled >> width >> mesh) && version == 1 && enabled == 1;
++                    effectRegistry.setParameterValue("Comic", "iUIMeshEdgesIterations", std::clamp(width, 1, 3));
++                    effectRegistry.setParameterValue("Comic", "iUIMeshEdgesEnable", mesh == 0 ? 0 : 1);
++                }
++                presentEffect = bridgeEnabled;
++            }
++
+             // Check if settings were saved (re-read from settingsManager which is already updated by UI)
+             if (pDeviceForSettings && pDeviceForSettings->imguiOverlay && pDeviceForSettings->imguiOverlay->hasSettingsSaved())
+             {
+@@ -3329,6 +3348,7 @@ namespace vkShade
+ 
+             // Hot-reload: check for key press or config file change
+             bool shouldReload = false;
++            bool fileChanged = false;
+             if (handleKeyPress(reloadKeySymbol, reloadPressed))
+             {
+                 Logger::debug("reload key pressed");
+@@ -3338,6 +3358,7 @@ namespace vkShade
+             }
+             if (pConfig->hasConfigChanged())
+             {
++                fileChanged = true;
+                 Logger::debug("config file changed detected");
+                 shouldReload = true;
+             }
+@@ -3398,8 +3419,12 @@ namespace vkShade
+                         depthDefinitionsChanged = pLogicalDevice->imguiOverlay->refreshDepthDefinitionsFromConfig();
+                         depthDefinitionsChanged |= pLogicalDevice->imguiOverlay->takeDepthDefinitionsChanged();
+                     }
+-                    if (depthDefinitionsChanged)
++                    if (depthDefinitionsChanged || fileChanged)
+                         effectRegistry.initialize(pConfig.get());
++                    if (fileChanged && pLogicalDevice->imguiOverlay)
++                        pLogicalDevice->imguiOverlay->setSelectedEffects(
++                            pConfig->getOption<std::vector<std::string>>("effects", {}),
++                            pConfig->getOption<std::vector<std::string>>("disabledEffects", {}));
+                     else if (!pLogicalDevice->imguiOverlay)
+                         effectRegistry.setDepthDefinitions(ConfigSerializer::loadDepthDefinitions(pConfig.get()));
+                     cachedEffects.initialized = false;
+diff --git a/tests/device_features.cpp b/tests/device_features.cpp
+index 0184661..0503751 100644
+--- a/tests/device_features.cpp
++++ b/tests/device_features.cpp
+@@ -339,12 +339,26 @@ namespace
+         validFeatures2Support.core = allFeatures(VK_TRUE);
+         vkShade::DeviceFeatureConfiguration validFeatures2Configuration(validFeatures2Info, validFeatures2Support, false);
+         require(validFeatures2Configuration.createInfo().pEnabledFeatures == nullptr, "valid Features2 create info gained a legacy feature pointer");
+-        require(validFeatures2Configuration.createInfo().pNext == &validFeatures2 && validFeatures2.pNext == nullptr
+-                    && validFeatures2.sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+-                "valid Features2 chain was changed or extended");
+-        require(sameFeatures(validFeatures2Configuration.enabledFeatures(), validFeatures2Before)
+-                    && sameFeatures(validFeatures2.features, validFeatures2Before),
+-                "valid Features2 bits were forced or mutated");
++        const auto* owned = static_cast<const VkPhysicalDeviceFeatures2*>(validFeatures2Configuration.createInfo().pNext);
++        require(owned != &validFeatures2 && owned->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
++                "Features2 was not copied");
++        require(owned->features.shaderStorageImageWriteWithoutFormat && owned->features.shaderStorageImageReadWithoutFormat
++                && owned->features.shaderImageGatherExtended && owned->features.geometryShader,
++                "supported shader features or application features lost");
++        require(sameFeatures(validFeatures2.features, validFeatures2Before), "caller Features2 bits were mutated");
++        VkLayerDeviceCreateInfo loaderA{}, loaderB{};
++        loaderA.sType = loaderB.sType = VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO;
++        loaderA.pNext = &loaderB; loaderB.pNext = &validFeatures2;
++        validFeatures2Info.pNext = &loaderA;
++        vkShade::DeviceFeatureConfiguration withLoader(validFeatures2Info, validFeatures2Support, false);
++        const auto* copiedA = static_cast<const VkLayerDeviceCreateInfo*>(withLoader.createInfo().pNext);
++        const auto* copiedB = static_cast<const VkLayerDeviceCreateInfo*>(copiedA->pNext);
++        const auto* copiedFeatures = static_cast<const VkPhysicalDeviceFeatures2*>(copiedB->pNext);
++        require(copiedA != &loaderA && copiedB != &loaderB && copiedFeatures != &validFeatures2,
++                "loader prefix was not cloned");
++        require(loaderA.pNext == &loaderB && loaderB.pNext == &validFeatures2,
++                "caller loader chain was mutated");
++        require(copiedFeatures->features.shaderStorageImageWriteWithoutFormat, "loader chain features missing");
+ 
+         fault.deviceFault             = VK_TRUE;
+         fault.deviceFaultVendorBinary = VK_FALSE;

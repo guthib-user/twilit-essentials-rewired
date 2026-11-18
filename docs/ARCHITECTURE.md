@@ -14,7 +14,8 @@
 | HUD coordinates and saved options | `rewired-hud/src/kcrux_hud_layout.hpp`, `config.cpp` |
 | HUD access to core service | `rewired-hud/src/core_adapter.cpp` |
 | Restart mode switch, package validation and staged updates | `deploy/rewired_launch.py` |
-| Optional scene styles, original-look bypass and saved preset selector | `rewired-visuals/src/mod.cpp`, `src/presets.wgsl` |
+| Optional presets and native color adaptations | `rewired-visuals/src/mod.cpp`, `src/presets.wgsl` |
+| Original DrawnShade FX runtime, provenance and private launch bridge | `rewired-visuals/original-fx-sources.json`, `runtime/vkshade-compat.patch`, `deploy/rewired_visuals.py`, `tools/provision_original_fx.py` |
 | Pinned private runtime capacity patch | `tools/patch_renderer_capacity.py` |
 | Disposable controller/capture fixtures | `rewired-core/src/kcrux_test_driver.cpp`, `tools/*rewired*.py` |
 | Small core regressions and crash triage | `tests/`, `tools/check_core.py`, `tools/inspect_minidump.py` |

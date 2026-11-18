@@ -1,0 +1,87 @@
+{
+  "preset": {
+    "url": "https://drive.google.com/file/d/1tTB4RP2DPs-4QwAFhFWH8jiFjTL1wm1A/view",
+    "sha256": "49daf9a5b6ec9a68b8f8ea51420801383310753a721c63952e26397d48be2309"
+  },
+  "runtime": {
+    "repository": "https://github.com/slobodaapl/vkShade.git",
+    "commit": "1b65208c01ff0a4d3592d4617911d111c5fe4694"
+  },
+  "files": [
+    {
+      "path": "Vignette.fx",
+      "url": "https://raw.githubusercontent.com/CeeJayDK/SweetFX/93ddf39b357f5da534ed6d34ba4ec8cc7dcfa361/Shaders/SweetFX/Vignette.fx",
+      "sha256": "a7358b592830fa74a0a50a842682c99db751e35666e49c229567daf9ea59afa2"
+    },
+    {
+      "path": "Comic.fx",
+      "url": "https://raw.githubusercontent.com/Daodan317081/reshade-shaders/f01ddb6f3dce6a8fb75ffb9fee878a1489edfc16/Shaders/Comic.fx",
+      "sha256": "f5ad5e60eb8753be6f35e2247bd5425871b993874bd89eca49fa00f1cab65b7d"
+    },
+    {
+      "path": "EyeAdaption.fx",
+      "url": "https://raw.githubusercontent.com/brussell1/Shaders/3869218ea004d4d7d5c596fbb6179e2d38c0cc55/Shaders/EyeAdaption.fx",
+      "sha256": "43d1906c60b74f536dc1b911eadf28ce8ea80c9a857c7dda35983129891ffaaa"
+    },
+    {
+      "path": "Depth_Cues.fx",
+      "url": "https://raw.githubusercontent.com/BlueSkyDefender/AstrayFX/59bae8b33e34f37a8e521e666864085ccbf08535/Shaders/Depth_Cues.fx",
+      "sha256": "deb8e4ae11810296db11285e2de50189446f805267c5812e58c4124db4aeebbd"
+    },
+    {
+      "path": "ContrastStretch.fx",
+      "url": "https://raw.githubusercontent.com/LordOfLunacy/Insane-Shaders/19397d503e2fbf1ad2cbedb35fbf2ee84a32e3ec/Shaders/ContrastStretch.fx",
+      "sha256": "f1e8e42b918798c01f31c85149562343761cb70491f09be3b32c5b85cf754a18"
+    },
+    {
+      "path": "ReShade.fxh",
+      "url": "https://raw.githubusercontent.com/crosire/reshade-shaders/fd0022170615ce0d8162d219bff07232fa6dd84f/Shaders/ReShade.fxh",
+      "sha256": "6dabfbbaf968c3871905d2ea17f96572ff7b1cec01310b5d0e5252b66b30174f"
+    },
+    {
+      "path": "ReShadeUI.fxh",
+      "url": "https://raw.githubusercontent.com/crosire/reshade-shaders/fd0022170615ce0d8162d219bff07232fa6dd84f/Shaders/ReShadeUI.fxh",
+      "sha256": "78adf672df47460297eb9fe6dd238d2aafa24510b52b84feb1a745dff70eb901"
+    },
+    {
+      "path": "LumeniteFX/LICENSE.md",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/LICENSE.md",
+      "sha256": "e7db77f66f2d17b832823a93ef9350c4e475c5887e13638b5dd1160ff0ba2f28"
+    },
+    {
+      "path": "LumeniteFX/Shaders/include/lumenite_ColorManagement.fxh",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/Shaders/include/lumenite_ColorManagement.fxh",
+      "sha256": "116d3c41cd48f7787a2ed87eefc65fb2d9083fc1ab609766a3fbcca3e62649a6"
+    },
+    {
+      "path": "LumeniteFX/Shaders/include/lumenite_Compute.fxh",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/Shaders/include/lumenite_Compute.fxh",
+      "sha256": "736e3f39fc0c48a405c4d10b0d158502009db940e2673ff778e6b919d3c1a55f"
+    },
+    {
+      "path": "LumeniteFX/Shaders/include/lumenite_Helpers.fxh",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/Shaders/include/lumenite_Helpers.fxh",
+      "sha256": "6772c4a9b54daa19bb7bf0a8af8bce44a3d6fc1a72c0a51878b15a6eb856f7eb"
+    },
+    {
+      "path": "LumeniteFX/Shaders/include/lumenite_Projections.fxh",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/Shaders/include/lumenite_Projections.fxh",
+      "sha256": "709ec414649b74e573ca0f12a5ef25998d332238f7cab14a3d91053c8d388cab"
+    },
+    {
+      "path": "LumeniteFX/Shaders/lumenite_Kernel.fx",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/Shaders/lumenite_Kernel.fx",
+      "sha256": "792b94047c6863b15df888411da39b2f27ac433e32869efc8c79512719b68b96"
+    },
+    {
+      "path": "LumeniteFX/Shaders/lumenite_RTAO.fx",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/Shaders/lumenite_RTAO.fx",
+      "sha256": "0d3e65214ae5347fb1d711b4f4f6e19fa0434e7ecea182ee33ad44e42e405355"
+    },
+    {
+      "path": "LumeniteFX/Textures/lumenite_bluenoise256.png",
+      "url": "https://raw.githubusercontent.com/umar-afzaal/LumeniteFX/680fc041fdd326e0408cb25be20f0fdb52f583c7/Textures/lumenite_bluenoise256.png",
+      "sha256": "2ad9e5b0bd28ddff569dbd756a551fe8e681b67eb72a83bb027434e1be24122b"
+    }
+  ]
+}
