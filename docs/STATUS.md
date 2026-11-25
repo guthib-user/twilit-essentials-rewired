@@ -1,7 +1,29 @@
 # Current status
 
-Updated 2026-11-18. Installed gameplay revision **32** uses core **0.1.11**,
+Updated 2026-11-25. Installed gameplay revision **33** uses core **0.1.12**,
 HUD **0.1.6**, slot service **1.4**, and official Essentials **3.0.2**.
+
+**Iron Boots fix:** the Rewired port omitted the Boots/Spinner extension to
+native item membership, so Down could equip Boots only for the native update
+to declare them absent and remove them. Essentials also performs its own
+three-channel cleanup; after sword drawing, it removed Boots even with the
+first fix. Revision 33 restores canonical membership and rejects that false
+cleanup only when assigned Boots are hidden from the native projections.
+Native player execution retains actual toggle and forced-removal authority.
+
+In a disposable copy of the player's profile with modern graphics, Compass
+and all ten mods, 28 Boots checks passed: all five slots, held/released input,
+drawing the sword, toggling off, and removing the assignment. All 46 existing
+menu/controller checks also passed on 3.0.2. Core invariant/input tests and
+production compilation passed; the installed package has the test driver off.
+The game was closed for installation, with package rollback retained and all
+56 checked player configuration/save/mod-data files unchanged. Water, mount
+and transformation behavior remain player playtests, not verified claims.
+
+**Upstream 3.1.3:** downloaded and checked separately, not installed. Its Boots
+checks pass, but RT again changes the outer inventory tab. The source repo
+still returns 404. It now exports the newer Collection/Quick Access interfaces
+and Midna Flow; see [update findings](upstream-3.0.2-and-playtest.md).
 
 **Startup recovery:** the player's next normal launch after FX runtime revision 2
 crashed at title initialization. Vulkan reported device loss, and the kernel
@@ -44,6 +66,9 @@ switches on restart. Dawnlight is disabled in this instance; Twilit Essentials
 a full native Items/Settings extension is still unavailable in that package.
 
 ## Last release and verification
+
+Revision 33 is the Iron Boots fix summarized above; HUD and upstream packages
+remain byte-identical to the previous installation.
 
 Revision 32 honors Essentials' **Warp as human** setting for already unlocked
 world-map portals before Link obtains the Shadow Crystal. Only the world-map

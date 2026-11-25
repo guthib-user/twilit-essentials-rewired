@@ -43,6 +43,9 @@ DEFINE_HOOK(&dMw_c::_execute,RewiredCollectionCursorInput);
 DEFINE_HOOK_SYMBOL("SDL_GetGamepadButton",bool(SDL_Gamepad*,int),RewiredCollectionRawButton);
 DEFINE_HOOK(&daAlink_c::checkItemChangeFromButton,KcruxStow);
 DEFINE_HOOK(&daAlink_c::checkItemSetButton,KcruxItemSetButton);
+DEFINE_HOOK(&daAlink_c::execute,RewiredPlayerExecute);
+DEFINE_HOOK(&daAlink_c::setHeavyBoots,RewiredSetBoots);
+DEFINE_HOOK(&daAlink_c::procBootsEquipInit,RewiredBootsEquipInit);
 DEFINE_HOOK(&daAlink_c::checkNewItemChange,KcruxNewItemChange);
 DEFINE_HOOK(&daAlink_c::procFishingFoodInit,KcruxFishingFoodInit);
 DEFINE_HOOK(&dMsgFlow_c::query021,KcruxEquippedItemQuery);
@@ -330,14 +333,48 @@ HookAction set_play_item(ModContext*,void* args,void*,void*){
     return HOOK_SKIP_ORIGINAL;
 }
 void after_item_set_button(ModContext*,void* args,void* retval,void*){
-    if(!kcrux_controls_enabled()||!s_loaded||mods::arg<int>(args,1)!=dItemNo_KANTERA_e)return;
+    if(!kcrux_controls_enabled()||!s_loaded)return;
+    const int item=mods::arg<int>(args,1);
+    if(item!=dItemNo_KANTERA_e&&item!=dItemNo_HVY_BOOTS_e&&item!=dItemNo_SPINNER_e)return;
     auto* found=static_cast<int*>(retval);
     if(!found||*found!=2)return;
-    // Vanilla only checks X/Y. For the lantern/oil interaction its callers
-    // need a yes/no answer, so include lantern assignments in Down/Up/RT too.
+    // This query uses 2 as "absent", not as the third item channel. These
+    // consumers need membership across all five assignments, independently
+    // of the currently projected item. In particular, Link's frame update
+    // removes Iron Boots immediately when this query reports them absent.
+    // Boots also mark a legacy HUD button; 0 is a safe native marker, while
+    // Rewired's visible HUD obtains the actual slot from the canonical service.
     for(int i=2;i<5;++i){
-        if(resolved_item(i)==dItemNo_KANTERA_e){*found=0;return;}
+        if(resolved_item(i)==item){*found=0;return;}
     }
+}
+unsigned s_playerExecuteDepth=0;
+HookAction before_player_execute(ModContext*,void*,void*,void*){
+    ++s_playerExecuteDepth;return HOOK_CONTINUE;
+}
+void after_player_execute(ModContext*,void*,void*,void*){
+    if(s_playerExecuteDepth)--s_playerExecuteDepth;
+}
+bool virtual_boots_hidden_from_cleanup(daAlink_c* link){
+    // Essentials additionally removes "unassigned" boots from its frame
+    // update, scanning only the three compatibility projections. Drawing a
+    // sword or using another item can hide an otherwise valid Down/RT pair.
+    // Native player execution owns actual toggles and forced removals (dive,
+    // mounts, transformation, prohibited stages); never intercept those.
+    if(!kcrux_controls_enabled()||!s_loaded||s_playerExecuteDepth||!link||link!=s_owner||
+       !link->checkEquipHeavyBoots()||link->checkWolf()||link->checkEventRun()||
+       link->checkDeadHP()||link->checkNotHeavyBootsStage())return false;
+    if(kcrux_find_equipped_slot(link,dItemNo_HVY_BOOTS_e)<2)return false;
+    for(int i=0;i<3;++i)if(resolved_item(logical_slot(i))==dItemNo_HVY_BOOTS_e)return false;
+    return true;
+}
+HookAction before_set_boots(ModContext*,void* args,void* retval,void*){
+    if(mods::arg<int>(args,1)!=0||!virtual_boots_hidden_from_cleanup(mods::arg<daAlink_c*>(args,0)))return HOOK_CONTINUE;
+    *static_cast<int*>(retval)=0;return HOOK_SKIP_ORIGINAL;
+}
+HookAction before_boots_equip_init(ModContext*,void* args,void* retval,void*){
+    if(!virtual_boots_hidden_from_cleanup(mods::arg<daAlink_c*>(args,0)))return HOOK_CONTINUE;
+    *static_cast<int*>(retval)=0;return HOOK_SKIP_ORIGINAL;
 }
 void clear_fishing_projection(bool equipRod){
     const int rod=s_fishingRodSlot;
@@ -833,7 +870,11 @@ ModResult initialize_kcrux_controls(ModError* error){
     if(result==MOD_OK)result=mods::hook::add_pre<KcruxMixIndex>(svc_hook,mix_index,&early);
     if(result==MOD_OK)result=mods::hook::add_pre<KcruxPlayItem>(svc_hook,play_item,&early);
     if(result==MOD_OK)result=mods::hook::add_pre<KcruxSetPlayItem>(svc_hook,set_play_item,&early);
-    if(result==MOD_OK)result=mods::hook::add_post<KcruxItemSetButton>(svc_hook,after_item_set_button);
+    if(result==MOD_OK)result=mods::hook::add_post<KcruxItemSetButton>(svc_hook,after_item_set_button,&late);
+    if(result==MOD_OK)result=mods::hook::add_pre<RewiredPlayerExecute>(svc_hook,before_player_execute,&early);
+    if(result==MOD_OK)result=mods::hook::add_post<RewiredPlayerExecute>(svc_hook,after_player_execute,&late);
+    if(result==MOD_OK)result=mods::hook::add_pre<RewiredSetBoots>(svc_hook,before_set_boots,&early);
+    if(result==MOD_OK)result=mods::hook::add_pre<RewiredBootsEquipInit>(svc_hook,before_boots_equip_init,&early);
     if(result==MOD_OK)result=mods::hook::add_pre<KcruxNewItemChange>(svc_hook,before_fishing_item_change,&early);
     if(result==MOD_OK)result=mods::hook::add_post<KcruxNewItemChange>(svc_hook,after_fishing_item_change);
     if(result==MOD_OK)result=mods::hook::add_post<KcruxFishingFoodInit>(svc_hook,after_fishing_init);
@@ -853,7 +894,7 @@ ModResult initialize_kcrux_controls(ModError* error){
     if(result!=MOD_OK)return mods::set_error(error,result,"could not install five-slot controls");
     // Save lifecycle owns migration; title-screen data must not be saved as a real slot.
     s_loaded=false;reset_transient();
-    svc_log->info(mod_ctx,"Rewired controls revision 32: early human map warp when enabled in Essentials");return MOD_OK;
+    svc_log->info(mod_ctx,"Rewired controls revision 33: retain Iron Boots across all five assignments");return MOD_OK;
 }
 void shutdown_kcrux_controls(){
     mods::hook::uninstall<RewiredMixOn>(svc_hook);mods::hook::uninstall<RewiredMixOff>(svc_hook);
@@ -867,6 +908,10 @@ void shutdown_kcrux_controls(){
     s_collectionInput.clear();
     mods::hook::uninstall<KcruxSetPlayItem>(svc_hook);
     mods::hook::uninstall<KcruxItemSetButton>(svc_hook);
+    mods::hook::uninstall<RewiredPlayerExecute>(svc_hook);
+    mods::hook::uninstall<RewiredSetBoots>(svc_hook);
+    mods::hook::uninstall<RewiredBootsEquipInit>(svc_hook);
+    s_playerExecuteDepth=0;
     mods::hook::uninstall<KcruxNewItemChange>(svc_hook);
     mods::hook::uninstall<KcruxFishingFoodInit>(svc_hook);
     mods::hook::uninstall<KcruxEquippedItemQuery>(svc_hook);

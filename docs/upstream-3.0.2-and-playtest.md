@@ -1,5 +1,29 @@
 # Essentials 3.0.2 integration and playtest plan
 
+## Update recheck (2026-11-25)
+
+The [official version list](https://twilitrealm.dev/mods/com.dusklight.twilit_essentials/versions/)
+now offers **3.1.3** (November 24). Its downloaded package SHA-256 is
+`c25b39c06899ff14164b852607143362484a779e004daef1394067e25edcda3e`.
+The advertised source repository still returns 404; this remains a companion
+integration, not a build of the upstream implementation.
+
+3.1.3 exports Collection 1.1, Quick Access 1.2 and Midna Flow 1.0, bringing the
+package into line with the public examples below. It still supplies no source
+inside the archive. The new first-run Introduction can preserve existing
+settings with **I have my own already**; avoid applying its control presets
+over Rewired. New UI, controller-layout and graphics options require separate
+compatibility work, not a silent dependency replacement.
+
+In the isolated full-graphics profile on the pinned 2.0.3 host, all ten mods
+loaded and revision 33 passed 28 Boots checks with 3.1.3. The controller suite
+then found **RT advances Equipment to Items**, violating Rewired's outer-tab
+rule. The map checks before that passed with the documented transformation
+fixture setting; an earlier launch omitted that setting and refused portals,
+which does not establish an upstream map regression. **3.1.3 is not installed
+or approved as a replacement.** Reconcile menu input ownership and validate
+new UI placement before updating the dependency.
+
 ## Upstream check (2026-11-16)
 
 The [Twilit Realm listing](https://twilitrealm.dev/mods/com.dusklight.twilit_essentials/)

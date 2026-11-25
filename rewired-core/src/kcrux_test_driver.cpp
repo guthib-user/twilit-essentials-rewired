@@ -336,6 +336,19 @@ void update_kcrux_test_driver() {
     if(objectPressed)++s_objectPresses;
     if(grant && grant!=s_grant && link && !link->checkEventRun()) {
         s_grant=grant;
+        if(grant>=37&&grant<=42){
+            // Test only: move owned boots through every canonical slot, or
+            // remove their assignment to verify native forced unequip.
+            int inventory=-1;
+            for(int i=0;i<MAX_ITEM_SLOTS;++i)
+                if(dComIfGs_getItem(i,false)==dItemNo_HVY_BOOTS_e){inventory=i;break;}
+            if(inventory>=0){
+                const int owner=kcrux_item_owner(inventory);
+                const int target=grant==42?owner:grant-37;
+                if(target>=0&&(grant==42||owner!=target))kcrux_assign_item(target,inventory);
+            }
+            return;
+        }
         if(grant>=30&&grant<=36){
             // Isolated visual-preset fixture. Never compiled into player controls.
             if(grant<=34){

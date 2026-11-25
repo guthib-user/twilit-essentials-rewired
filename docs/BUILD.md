@@ -89,6 +89,19 @@ python3 tools/playcheck_rewired.py quit
 The test sets a portal-eligibility fixture flag in RAM of the disposable game
 and edits its test assignments. Do not use its package on the player's profile.
 
+For an Iron Boots regression, copy an ordinary save that owns exactly one pair
+of Boots and start the same Ordon fixture. Run before the menu suite changes
+its assignments:
+
+```sh
+python3 tools/check_iron_boots.py build/iron-boots-checks.json
+```
+
+This checks all five slots through press, hold, release, drawing the sword,
+toggling off and clearing the assignment. It modifies only the disposable
+profile's assignments and does not create or save game progress. It does not
+validate underwater, mounted or transformation behavior.
+
 The driver can expose title-screen actors before a save is ready. Confirm the
 real stage, player and stable procedure before applying fixture grants.
 
